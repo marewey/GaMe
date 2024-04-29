@@ -53,6 +53,7 @@ goto :init
 title GaMe
 call :codepage
 call :makeBG
+call :script.music silent
 set toffset=3
 set rate=300
 set out=0
@@ -346,8 +347,8 @@ if "%input%"=="294" set /a sel=%sel%-1
 if "%input%"=="296" set /a sel=%sel%+1
 if "%sel%"=="0" set sel=8
 if "%sel%"=="9" set sel=1
-if "%input%"=="3" del .stop&exit
-if "%input%"=="113" del .stop&exit
+if "%input%"=="3" call :gam.music -1&del .stop&exit
+if "%input%"=="113" call :gam.music -1&del .stop&exit
 if not "%input%"=="13" goto :gam.menu0
 if "%sel%"=="1" goto :start
 if "%sel%"=="2" goto :gam.download
@@ -358,7 +359,7 @@ if "%sel%"=="5" if "%color_on%"=="0" set color_on=1
 if "%sel%"=="6" if "%mute%"=="1" set mute=-1
 if "%sel%"=="6" if "%mute%"=="0" set mute=1
 if "%sel%"=="7" set /a difficulty=%difficulty%+1
-if "%sel%"=="8" del .stop&exit
+if "%sel%"=="8" call :gam.music -1&del .stop&exit
 if "%difficulty%"=="5" set difficulty=1
 if "%sel%"=="5" if "%color_on%"=="-1" set color_on=0&call :gam.conf.save
 if "%sel%"=="5" if "%color_on%"=="1" call :gam.conf.save&bin\bg.exe Locate 0 0&bin\bg.exe print 8 "%test_%"
@@ -480,9 +481,13 @@ goto :eof
 :gam.update
 ::Update program if version changed
 set /p "=Downloading missing assets... " <NUL
-if not exist "bin\getinput.exe" set /p "=GetInput.exe " <NUL&bin\wget.exe -O bin\getinput.exe http://%url%/game/getinput.exe 2>nul
-if not exist "bin\bg.exe" set /p "=BG.exe " <NUL&bin\wget.exe -O bin\bg.exe http://%url%/game/bg.exe 2>nul
-if not exist "cache\music.mp3" set /p "=Music.mp3 " <NUL&bin\wget.exe -O cache\music.mp3 http://%url%/game/sounds/music.mp3 2>nul
+if not exist "bin\getinput.exe" set /p "=getinput.exe " <NUL&bin\wget.exe -O bin\getinput.exe http://%url%/game/getinput.exe 2>nul
+if not exist "bin\bg.exe" set /p "=bg.exe " <NUL&bin\wget.exe -O bin\bg.exe http://%url%/game/bg.exe 2>nul
+if not exist "cache\music.mp3" set /p "=music.mp3 " <NUL&bin\wget.exe -O cache\music.mp3 http://%url%/game/sounds/music.mp3 2>nul
+if not exist "cache\boom.wav" set /p "=boom.wav " <NUL&bin\wget.exe -O cache\boom.wav http://%url%/game/sounds/boom.wav 2>nul
+if not exist "cache\damage.wav" set /p "=damage.wav " <NUL&bin\wget.exe -O cache\damage.wav http://%url%/game/sounds/damage.wav 2>nul
+if not exist "cache\gem.wav" set /p "=gem.wav " <NUL&bin\wget.exe -O cache\gem.wav http://%url%/game/sounds/gem.wav 2>nul
+if not exist "cache\heart.wav" set /p "=heart.wav " <NUL&bin\wget.exe -O cache\heart.wav http://%url%/game/sounds/heart.wav 2>nul
 echo.
 set /p "=Checking for updates... " <NUL
 bin\wget.exe -O data\version http://%url%/game/version 2>nul
