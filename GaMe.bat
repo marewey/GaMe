@@ -1,15 +1,13 @@
 @echo off
+@SetLocal EnableDelayedExpansion Enableextensions
 set log=nul
-set version=1.2
+set version=1.3.1
 mkdir cache\scores 2>nul
 mkdir data 2>nul
 set cd_=%cd%
 set args=%*
 set url=markspi.ddns.me
 echo.Initializing...
-
-SetLocal EnableDelayedExpansion Enableextensions
-For /F %%a In ('Copy /Z "%~dpf0" Nul') Do Set "CR=%%a"
 ::========== MAKE SCREEN BIGGER ==========::
 set "cmd.con=HKCU\Console\%%SystemRoot%%_system32_cmd.exe /v"
 set "ram=!tmp!\WRAM.tmp"
@@ -51,19 +49,20 @@ call :load
 goto :init
 :load
 title GaMe
+mode con cols=43 lines=19
 call :codepage
 call :makeBG
-call :script.music silent
 set toffset=3
-set rate=300
+::set rate=300
 set out=0
 set pd=5
 set rows=9
 set view=18
 set mem=80
-set difficulty=2
+set difficulty=1
 set color_on=1
 set mute=0
+set ingame=0
 set music=1
 ::min of 5 for speed
 set speed=10
@@ -72,13 +71,11 @@ if "%connection%"=="1" call :gam.update
 ping localhost -n 2 >nul
 :play
 copy nul .stop >nul 2>nul
-::if "%color_on%"=="-1" set color_on=0
 call :gam.conf.load
-call :gam.format
-if "%color_on%"=="1" bin\bg.exe Locate 0 0&bin\bg.exe print 8 "%test_%"
+echo.Please Set Window Size Now...
+pause
+
 if "%sel%"=="" set sel=1
-bin\bg.exe Cursor 0
-call :gam.music 1
 goto :gam.menu
 :start
 ::Setup start values
@@ -104,25 +101,24 @@ copy nul .stop >nul 2>nul
 del .pause 2>nul
 del .stop 2>nul
 ::LOADING BAR
+set tmpside=0
 for /l %%t in (0,2,%xwin%) do set /a tmpside=!tmpside!+1
 set /a tmpside=!tmpside!-8
 set /a tmpheight=!ywin!-3
 bin\bg.exe fcprint !tmpheight! !tmpside! F "Loading Game..."
 set /a tmpheight=!tmpheight!+1
-if "%color_on%"=="1" (
-	set /a xwin_tmp=!xwin!-2
-	for /l %%a in (1,1,!xwin_tmp!) do (
-		set /a sleep_=%%a + !random! %% 150
-		bin\bg.exe fcprint !tmpheight! %%a F "Û"
-		bin\bg.exe sleep !sleep_!
-		if "%%a"=="4" call :script.ic silent
-		if "%%a"=="10" call :script.music silent
-	)
+set /a lbs=(180-%window_width%)
+set /a xwin_tmp=!xwin!-2
+for /l %%a in (1,1,!xwin_tmp!) do (
+	set /a sleep_=%%a / 2 + !random! %% %lbs%
+	bin\bg.exe fcprint !tmpheight! %%a F "Û"
+	bin\bg.exe sleep !sleep_!
+	if "%%a"=="10" call :script.music silent
 )
+set ingame=1
 set tmpside=
 call :gam.load
-start /min bin\inputcontroller.bat
-call :gam.music 0
+call :gam.music 1
 bin\bg.exe Locate 0 0
 bin\bg.exe print 8 "%test_%"
 set refresh_top=1
@@ -131,6 +127,7 @@ title GaMe
 set tptC=0
 set tss=%time%
 :a
+bin\bg.exe Cursor 0
 call :gam.input
 call :gam.usr
 call :gam.draw
@@ -139,8 +136,10 @@ goto :a
 :gam.input
 set last_input=%input%
 ::Get input from keyboad/mouse
-bin\getinput.exe
+if "%ingame%"=="1" bin\bg.exe LastKbd
+if "%ingame%"=="0" bin\bg.exe Kbd
 set input=%errorlevel%
+if "%ingame%"=="1" if not "%speed%"=="0" bin\bg.exe Sleep %speed%
 goto :eof
 :gam.usr
 ::Move User along the map
@@ -149,12 +148,17 @@ set x%x%-y%y%=
 set /a y=%y%+1
 if "%input%"=="293" set /a x=%x%-1
 if "%input%"=="295" set /a x=%x%+1
+if "%input%"=="333" set /a x=%x%+1
+if "%input%"=="331" set /a x=%x%-1
 if "%input%"=="32" call :gam.boom
 if "%input%"=="13" call :gam.boom
 if "%input%"=="27" call :gam.music -1&set pausetimestart=%time%&call :gam.pause&title GaMe&set refresh_top=1&call :gam.music 1
 set lpos=%pos%
 set pos=!x%x%-y%y%!
-if not "%lpos%"==" " if not "%lpos%"=="." if not "%lpos%"=="%char_gem%" if not "%lives%"=="10" if not "%special%"=="5" call :gam.refresh.icons
+if not "%lpos%"==" " if not "%lpos%"=="." if not "%lpos%"=="" if not "%lpos%"=="%char_gem%" if not "%lives%"=="10" if not "%special%"=="5" call :gam.refresh.icons
+set /a rows_=%rows%+1
+if "%x%"=="0" set x=%rows%
+if "%x%"=="%rows_%" set x=1
 set x%x%-y%y%=%char_down%
 if "%input%"=="3" set lives=0&set x%x%-y%y%=X
 if "%input%"=="113" set lives=0&set x%x%-y%y%=X
@@ -170,7 +174,7 @@ if "%color_on%"=="0" (
 		for /l %%x in (1,1,%xmax%) do (
 			set line%%y=!line%%y!!x%%x-y%%y!
 		)
-		set /p "=%side%º!line%%y!º%side%" <NUL
+		set /p "=%sidel%º!line%%y!º%sider%  " <NUL
 		set line%%y=
 	)
 	::Write score and level
@@ -179,13 +183,11 @@ if "%color_on%"=="0" (
 )
 
 if "%color_on%"=="1" (
-	set /a ywin_tmp=%ywin%-2
-	if "!refresh_top!"=="1" bin\bg.exe Locate 0 0
-	if "!refresh_top!"=="1" bin\bg.exe print 8 "%test%"
-	if "!refresh_top!"=="1" bin\bg.exe Locate 0 0
-	if "!refresh_top!"=="1" bin\bg.exe print 4 "%hearts% " D "%boom%"
+	set /a ywin_tmp=%ywin%-1
+	set /a pad_tmp=%pad%-2
+	if "!refresh_top!"=="1" bin\bg.exe fcprint 0 0 8 "%test%"
+	if "!refresh_top!"=="1" bin\bg.exe fcprint 0 1 4 "%hearts% " D "%boom%"
 	if "!refresh_top!"=="1" set refresh_top=0
-	bin\bg.exe Locate 1 0
 	set color_stack=
 	for /l %%y in (%ymin%,1,%ymax%) do (
 		for /l %%x in (1,1,%xmax%) do (
@@ -199,13 +201,13 @@ if "%color_on%"=="1" (
 			if %lives% leq 0 if "!x%%x-y%%y!"=="X" set line%%y=!line%%y!" C4 "X" F "
 			if not "!x%%x-y%%y!"=="%char_heart%" if not "!x%%x-y%%y!"=="%char_gem%" if not "!x%%x-y%%y!"=="%char_sun%" if not "!x%%x-y%%y!"=="%char_down%" if not "!x%%x-y%%y!"=="X" set line%%y=!line%%y!!x%%x-y%%y!
 		)
-		set color_stack=!color_stack! 8 "%side%" F "º!line%%y!º" 8 "%side%"
+		set color_stack=!color_stack! 8 "%sidel%" F "º!line%%y!º" 8 "\n"
 		set line%%y=
 	)
-	bin\bg.exe print !color_stack!
+	::bin\bg.exe print !color_stack!
+	bin\bg.exe fcprint 1 0 !color_stack!
 	::Write score and level
-	bin\bg.exe Locate !ywin_tmp! 0
-	bin\bg.exe print F "SCORE:%score% LVL:%level% " A "%char_gem%" F ":%gems%"
+	bin\bg.exe fcprint !ywin_tmp! 0 F "SCORE:%score% LVL:%level% " A "%char_gem%" F ":%gems%"
 	
 )
 ::Erase last row from memory
@@ -213,6 +215,7 @@ set /a ly=%ymin%-1
 for /l %%x in (1,1,%xmax%) do (
 	set x%%x-y%ly%=
 )
+set theory=
 goto :eof
 :gam.refresh.icons
 ::Convert lives into hearts
@@ -239,7 +242,7 @@ if "%pos%"=="%char_gem%" call :gam.add.gem&goto :eof
 if "%pos%"=="%char_heart%" call :gam.add.heart&goto :eof
 if "%pos%"=="%char_sun%" call :gam.add.boom&goto :eof
 ::If touching anything else, lose a life.
-if not "%pos%"==" " if not "%pos%"=="." call :gam.damage
+if not "%pos%"==" " if not "%pos%"=="." if not "%pos%"=="" call :gam.damage
 if %lives% leq 0 set /a ymin=!ymin!-1&set /a ymax=!ymax!-1&goto :gam.gameover
 goto :eof
 :gam.add.heart
@@ -304,52 +307,57 @@ goto :eof
 :: ========== INIT/FINISH ========== ::
 
 :gam.menu
+set id=0
+call :gam.format
+set /a ywin_tmp=%ywin%-3
 title GaMe - Menu
 set name=
-if "%color_on%"=="1" bin\bg.exe Locate 0 0&bin\bg.exe print 8 "%test_%"
-:gam.menu0
-::The Main Menu
-if "%color_on%"=="0" for /l %%s in (1,1,8) do set sel%%s= 
-if "%color_on%"=="1" for /l %%s in (1,1,8) do set sel%%s=" 7 " 
-if "%color_on%"=="0" set sel%sel%=^^^>
-if "%color_on%"=="1" set sel%sel%=^>
-if "%color_on%"=="0" (
-	cls
-	echo.%test%
-	echo... Gems and Meteors
-	echo.%test%
-	echo... %sel1% Start GaM
-	echo... %sel2% Scores
-	echo... %sel3% Controls
-	echo... %sel4% Goals
-	echo... %sel5% Color On: %color_on% [C]
-	echo... %sel6% Muted: %mute% [M]
-	echo... %sel7% Difficulty: %difficulty%
-	echo... %sel8% Quit
-	echo.%test%
-)
-if "%color_on%"=="1" (
-	for /l %%t in (0,2,%xwin%) do set /a tmpside=!tmpside!+1
-	set /a tmpside=!tmpside!-9
-	bin\bg.exe Locate 3 !tmpside!&bin\bg.exe print A "Gems" 7 " and " F "Meteors\n"
-	bin\bg.exe Locate 5 !tmpside!&bin\bg.exe print 8F "%sel1% Start GaM     \n"
-	bin\bg.exe Locate 6 !tmpside!&bin\bg.exe print 8F "%sel2% Scores        \n"
-	bin\bg.exe Locate 7 !tmpside!&bin\bg.exe print 8F "%sel3% Controls      \n"
-	bin\bg.exe Locate 8 !tmpside!&bin\bg.exe print 8F "%sel4% Goals         \n"
-	bin\bg.exe Locate 9 !tmpside!&bin\bg.exe print 8F "%sel5% Color On: %color_on%   \n"
-	bin\bg.exe Locate 10 !tmpside!&bin\bg.exe print 8F "%sel6% Muted: %mute%      \n"
-	bin\bg.exe Locate 11 !tmpside!&bin\bg.exe print 8F "%sel7% Difficulty: %difficulty% \n"
-	bin\bg.exe Locate 12 !tmpside!&bin\bg.exe print 8F "%sel8% Quit          \n"
-)
 set tmpside=
+bin\bg.exe locate 0 0&bin\bg.exe print 8 "%test_%"
+for /l %%t in (0,2,%xwin%) do set /a tmpside=!tmpside!+1
+set /a tmpside=!tmpside!-16
+for /l %%a in (1,1,16) do bin\bg.exe fcprint %%a !tmpside! f "                               "
+:gam.menu0
+bin\bg.exe Cursor 0
+::The Main Menu
+for /l %%s in (1,1,8) do set sel%%s=" 7 " 
+set sel%sel%=^>
+bin\bg.exe fcprint 2 !tmpside! 7 "      " 9A "                    \n"
+bin\bg.exe fcprint 3 !tmpside! 7 "      " 9A "  Gems" 97 " and " 9F "Meteors  \n"
+bin\bg.exe fcprint 4 !tmpside! 7 "      " 9A "                    \n"
+bin\bg.exe fcprint 7 !tmpside! 7 "       " 8F "%sel1% Start GaM     \n"
+bin\bg.exe fcprint 8 !tmpside! 7 "       " 8F "%sel2% Scores        \n"
+bin\bg.exe fcprint 9 !tmpside! 7 "       " 8F "%sel3% Controls      \n"
+bin\bg.exe fcprint 10 !tmpside! 7 "       " 8F "%sel4% Goals         \n"
+bin\bg.exe fcprint 11 !tmpside! 7 "       " 8F "%sel5% Color On: %color_on%   \n"
+bin\bg.exe fcprint 12 !tmpside! 7 "       " 8F "%sel6% Muted: %mute%      \n"
+bin\bg.exe fcprint 13 !tmpside! 7 "       " 8F "%sel7% Difficulty: %difficulty% \n"
+bin\bg.exe fcprint 14 !tmpside! 7 "       " 8F "%sel8% Quit          \n"
+if "%debug%"=="1" bin\bg.exe fcprint %ywin_tmp% 0 7 "%sidel%###############\n" 8 "%xwin%x%ywin%/%xmax%x%ymax%/%pad%(%iseven%)%input%    "
 call :gam.input
+if "%input%"=="293" set /a sel=%sel%-1
 if "%input%"=="294" set /a sel=%sel%-1
+if "%input%"=="295" set /a sel=%sel%+1
 if "%input%"=="296" set /a sel=%sel%+1
+if "%input%"=="336" set /a sel=%sel%+1
+if "%input%"=="333" set /a sel=%sel%+1
+if "%input%"=="331" set /a sel=%sel%-1
+if "%input%"=="328" set /a sel=%sel%-1
 if "%sel%"=="0" set sel=8
 if "%sel%"=="9" set sel=1
-if "%input%"=="3" call :gam.music -1&del .stop&exit
-if "%input%"=="113" call :gam.music -1&del .stop&exit
-if not "%input%"=="13" goto :gam.menu0
+if "%input%"=="3" del .stop&exit
+if "%input%"=="4" set debug=1&call :gam.format&goto :gam.menu
+if "%input%"=="113" del .stop&exit
+if "%input%"=="99" if "%color_on%"=="1" set color_on=-1
+if "%input%"=="99" if "%color_on%"=="0" set color_on=1&call :gam.conf.save
+if "%input%"=="99" if "%color_on%"=="-1" set color_on=0&call :gam.conf.save
+if "%input%"=="109" if "%mute%"=="1" set mute=-1
+if "%input%"=="109" if "%mute%"=="0" set mute=1&call :gam.conf.save
+if "%input%"=="109" if "%mute%"=="-1" set mute=0&call :gam.conf.save
+if "%input%"=="77" if "%music%"=="1" set music=-1
+if "%input%"=="77" if "%music%"=="0" set music=1&call :gam.conf.save
+if "%input%"=="77" if "%music%"=="-1" set music=0&call :gam.conf.save
+if not "%input%"=="13" if not "%input%"=="32" goto :gam.menu0
 if "%sel%"=="1" goto :start
 if "%sel%"=="2" goto :gam.download
 if "%sel%"=="3" call :gam.controls&goto :gam.menu
@@ -359,47 +367,61 @@ if "%sel%"=="5" if "%color_on%"=="0" set color_on=1
 if "%sel%"=="6" if "%mute%"=="1" set mute=-1
 if "%sel%"=="6" if "%mute%"=="0" set mute=1
 if "%sel%"=="7" set /a difficulty=%difficulty%+1
-if "%sel%"=="8" call :gam.music -1&del .stop&exit
+if "%sel%"=="8" del .stop&exit
 if "%difficulty%"=="5" set difficulty=1
 if "%sel%"=="5" if "%color_on%"=="-1" set color_on=0&call :gam.conf.save
-if "%sel%"=="5" if "%color_on%"=="1" call :gam.conf.save&bin\bg.exe Locate 0 0&bin\bg.exe print 8 "%test_%"
+if "%sel%"=="5" if "%color_on%"=="1" call :gam.conf.save&goto gam.menu
 if "%sel%"=="6" if "%mute%"=="-1" set mute=0&call :gam.conf.save
 if "%sel%"=="6" if "%mute%"=="1" call :gam.conf.save
-if "%sel%"=="7" call :gam.music -1&call :gam.format&call :gam.conf.save
-if "%sel%"=="7" if "%color_on%"=="1" bin\bg.exe Locate 0 0&bin\bg.exe print 8 "%test_%"
+if "%sel%"=="7" call :gam.format&call :gam.conf.save
+if "%sel%"=="7" if "%color_on%"=="1" goto gam.menu
 goto :gam.menu0
 :gam.goals
 cls
-bin\bg.exe locate 0 5
-echo.GOALS:
-echo.
-echo.  Avoid all Meteors
-echo.  %char_gem% : +10 points %char_gem%
-echo.  %char_heart% : +1 life %char_heart%
-echo.  %char_sun% : +1 SHIELD %char_sun%
-echo.
-echo.  Holding %char_sun% will lower damage 
-echo.
-echo.  Score Calculation:
-echo.   SCORE
-echo.   BONUS [{LVL*2}*{DIFF*2}]
-echo.   BONUS [{DMG*2}*{DIFF*2}]
-echo.   ________________________
-echo.   TOTAL
+set tmpside=
+for /l %%t in (0,2,%xwin%) do set /a tmpside=!tmpside!+1
+set /a tmpside=!tmpside!-16
+bin\bg.exe Locate 0 0
+for /l %%a in (0,1,%ywin%) do bin\bg.exe print 8 "%test%"
+for /l %%a in (1,1,16) do bin\bg.exe Locate %%a %tmpside%&echo.                               
+bin\bg.exe fcprint 1 %tmpside% f0 "             GOALS             "
+bin\bg.exe fcprint 3 %tmpside% f "  Avoid all Meteors"
+bin\bg.exe fcprint 4 %tmpside% f "  Collect Items:"
+bin\bg.exe fcprint 5 %tmpside% f "  - " A "Gems %char_gem% " f "    : +10 points "
+bin\bg.exe fcprint 6 %tmpside% f "  - " 4 "Health %char_heart% " f "  : +1 life "
+bin\bg.exe fcprint 7 %tmpside% f "  - " D "Shields %char_sun% " f " : +1 SHIELD "
+bin\bg.exe fcprint 9 %tmpside% f "  Holding " d "%char_sun%" f " will lower damage "
+bin\bg.exe fcprint 11 %tmpside% f "  Firing will use 1 " d "%char_sun%" f " to"
+bin\bg.exe fcprint 12 %tmpside% f "  destroy meteors ahead"
+pause >nul
+bin\bg.exe Locate 0 0
+for /l %%a in (1,1,16) do bin\bg.exe Locate %%a %tmpside%&echo.                               
+bin\bg.exe fcprint 1 %tmpside% f0 "             GOALS             "
+bin\bg.exe fcprint 3 %tmpside% f "       Score Calculation"
+bin\bg.exe fcprint 5 %tmpside% f "   SCORE"
+bin\bg.exe fcprint 6 %tmpside% f "   TIME"
+bin\bg.exe fcprint 7 %tmpside% f "   BONUS [{LVL*2}*{DIFF*2}]"
+bin\bg.exe fcprint 8 %tmpside% f " + BONUS [{DMG*2}*{DIFF*2}]"
+bin\bg.exe fcprint 9 %tmpside% f "   ________________________"
+bin\bg.exe fcprint 10 %tmpside% f "   TOTAL"
 pause >nul
 goto :eof
 :gam.controls
 cls
-if "%color_on%"=="1" bin\bg.exe print 8 "%test_%"
-bin\bg.exe locate 0 0
-echo.    CONTROLS:    
-echo.%test%
-echo.    LEFT -- Go Left       
-echo.    RIGHT - Go Right      
-echo.    SPACE - Use SHIELD    
-echo.    ESC --- Pause         
-echo.    Q/^^^C -- Quit/Die      
-echo.%test%
+set tmpside=
+for /l %%t in (0,2,%xwin%) do set /a tmpside=!tmpside!+1
+set /a tmpside=!tmpside!-16
+bin\bg.exe Locate 0 0
+for /l %%a in (0,1,%ywin%) do bin\bg.exe print 8 "%test%"
+for /l %%a in (1,1,16) do bin\bg.exe Locate %%a %tmpside%&echo.                               
+bin\bg.exe fcprint 1 %tmpside% f0 "            CONTROLS           "
+bin\bg.exe fcprint 2 %tmpside% f "_______________________________"
+bin\bg.exe fcprint 3 %tmpside% f "    LEFT -- Go Left"
+bin\bg.exe fcprint 4 %tmpside% f "    RIGHT - Go Right"
+bin\bg.exe fcprint 5 %tmpside% f "    SPACE - Use SHIELD"
+bin\bg.exe fcprint 6 %tmpside% f "    ESC --- Pause"
+bin\bg.exe fcprint 7 %tmpside% f "    Q/^^^C -- Quit/Die"
+bin\bg.exe fcprint 8 %tmpside% f "_______________________________"
 pause >nul
 goto :eof
 :gam.load
@@ -444,50 +466,59 @@ for /l %%y in (%ly%,1,%ny%) do (
 )
 goto :eof
 :gam.format
-echo.
 ::Choose game settings based off difficulty
-if "%difficulty%"=="1" set rows=13&set view=19&set rate=145&set prb=5&set mem=50&set pd=4
-if "%difficulty%"=="2" set rows=11&set view=17&set rate=140&set prb=7&set mem=60&set pd=5
-if "%difficulty%"=="3" set rows=9&set view=15&set rate=135&set prb=10&set mem=80&set pd=6
-if "%difficulty%"=="4" set rows=6&set view=13&set rate=130&set prb=12&set mem=95&set pd=8
-if "%difficulty%"=="0" set rows=15&set view=20&set rate=200&set prb=8&set mem=65&set pd=5
-::set /a icrate=1
+if "%difficulty%"=="1" set rows=13&set viewmax=32&set prb=5&set speed=30
+if "%difficulty%"=="2" set rows=11&set viewmax=34&set prb=7&set speed=10
+if "%difficulty%"=="3" set rows=9&set viewmax=36&set prb=10&set speed=5
+if "%difficulty%"=="4" set rows=7&set viewmax=38&set prb=12&set speed=0
 ::Generate the numbers on window and screen
+for /f "tokens=2" %%A in ('mode con ^| find "Columns"') do set "window_width=%%A"
+for /f "tokens=2" %%A in ('mode con ^| find "Lines"') do set "window_height=%%A"
+set /a xwin=%window_width%
+set /a ywin=%window_height%
+set /a view=%window_height%-3
+if %view% geq %viewmax% set view=%viewmax%
 set xmax=%rows%
 set ymax=%view%
-set /a pad=%pd%+(%xmax%/2)
-set /a xwin=%xmax%+2+(%pad%*2)
-set /a ywin=%ymax%+4
-set side=&set spc=&set spc_=&set bs=&set bs_=&set test=&set test_=&set xside=0
+set /a pad=(%xwin%/2)-(%xmax%/2)-1
+set /a iseven=%xwin% %% 2
+set /a mem=%viewmax%+%rows%+5
+
+set sider=&set sidel=&set test=&set test_=&set xside=0
 ::Generate display shortcuts
 for /l %%x in (1,1,%xwin%) do (
-	set bs_=!bs_!
-	set spc_= !spc_!
 	set test=.!test!
 )
-for /l %%y in (1,1,%ywin%) do (
-	set bs=!bs_!!bs!
-	set spc=!spc_!!spc!
+for /l %%y in (0,1,%ywin%) do (
 	set test_=!test_!!test!
 )
-for /l %%x in (1,1,%pad%) do (
-	set side=.!side!
+if "%iseven%"=="1" for /l %%x in (1,1,%pad%) do (
+	set sidel=.!sidel!
+	set sider=.!sider!
 	set /a xside=!xside!+1
 )
-mode con cols=%xwin% lines=%ywin%
-mode con rate=%rate%
-call :script.ic silent
+if "%iseven%"=="0" (
+	for /l %%x in (2,1,%pad%) do (
+		set sidel=.!sidel!
+	)
+	for /l %%x in (1,1,%pad%) do (
+		set sider=.!sider!
+		set /a xside=!xside!+1
+	)
+)
+mode con cols=%window_width% lines=%window_height%
+::mode con rate=%rate%
 goto :eof
 :gam.update
 ::Update program if version changed
 set /p "=Downloading missing assets... " <NUL
-if not exist "bin\getinput.exe" set /p "=getinput.exe " <NUL&bin\wget.exe -O bin\getinput.exe http://%url%/game/getinput.exe 2>nul
-if not exist "bin\bg.exe" set /p "=bg.exe " <NUL&bin\wget.exe -O bin\bg.exe http://%url%/game/bg.exe 2>nul
-if not exist "cache\music.mp3" set /p "=music.mp3 " <NUL&bin\wget.exe -O cache\music.mp3 http://%url%/game/sounds/music.mp3 2>nul
-if not exist "cache\boom.wav" set /p "=boom.wav " <NUL&bin\wget.exe -O cache\boom.wav http://%url%/game/sounds/boom.wav 2>nul
-if not exist "cache\damage.wav" set /p "=damage.wav " <NUL&bin\wget.exe -O cache\damage.wav http://%url%/game/sounds/damage.wav 2>nul
-if not exist "cache\gem.wav" set /p "=gem.wav " <NUL&bin\wget.exe -O cache\gem.wav http://%url%/game/sounds/gem.wav 2>nul
-if not exist "cache\heart.wav" set /p "=heart.wav " <NUL&bin\wget.exe -O cache\heart.wav http://%url%/game/sounds/heart.wav 2>nul
+::if not exist "bin\getinput.exe" set /p "=GetInput.exe " <NUL&bin\wget.exe -O bin\getinput.exe http://%url%/game/getinput.exe 2>nul
+if not exist "bin\bg.exe" set /p "=BG.exe" <NUL&bin\wget.exe -O bin\bg.exe http://%url%/game/bg.exe 2>nul
+if not exist "cache\music.mp3" set /p "=, Music.mp3" <NUL&bin\wget.exe -O cache\music.mp3 http://%url%/game/sounds/music.mp3 2>nul
+if not exist "cache\boom.wav" set /p "=, Boom.wav" <NUL&bin\wget.exe -O cache\boom.wav http://%url%/game/sounds/boom.wav 2>nul
+if not exist "cache\damage.wav" set /p "=, Damage.wav" <NUL&bin\wget.exe -O cache\damage.wav http://%url%/game/sounds/damage.wav 2>nul
+if not exist "cache\gem.wav" set /p "=, Gem.wav" <NUL&bin\wget.exe -O cache\gem.wav http://%url%/game/sounds/gem.wav 2>nul
+if not exist "cache\heart.wav" set /p "=, Heart.wav" <NUL&bin\wget.exe -O cache\heart.wav http://%url%/game/sounds/heart.wav 2>nul
 echo.
 set /p "=Checking for updates... " <NUL
 bin\wget.exe -O data\version http://%url%/game/version 2>nul
@@ -514,14 +545,12 @@ for /f "tokens=1-2 delims==" %%a in ('type data\settings') do set %%a=%%b
 goto :eof
 :gam.conf.save
 ::Load settings File to memory
-call :gam.music -1
 >data\settings echo.mem=%mem%
 >>data\settings echo.difficulty=%difficulty%
 >>data\settings echo.mute=%mute%
 >>data\settings echo.color_on=%color_on%
 >>data\settings echo.speed=%speed%
 >>data\settings echo.music=%music%
-call :gam.music 1
 goto :eof
 :gam.music
 if "%1"=="-1" (
@@ -535,45 +564,49 @@ if "%1"=="1" (
 )
 goto :eof
 :gam.pause
+set ingame=0
 title GaMe (Paused)
 ::Cover the window in dots
 copy nul .pause >nul 2>nul
 for /l %%t in (0,4,%ywin%) do set /a tmp=!tmp!+1
 for /l %%t in (4,4,%ywin%) do set /a tmpp=!tmpp!+1
-for /l %%t in (0,4,%xwin%) do set /a tmpside=!tmpside!+1
 for /l %%t in (0,8,%xwin%) do set tmpspc=!tmpspc! 
+for /l %%t in (0,2,%xwin%) do set /a tmpside=!tmpside!+1
+set /a tmpside=!tmpside!-8
 set /a tmp_=%ywin%-2
-set /a tmp_2=%ywin%-3
+set /a tmp_2=%ywin%-5
 bin\bg.exe Locate 0 0
 if "%color_on%"=="0" for /l %%a in (0,1,%tmp_%) do echo.%test%
-if "%color_on%"=="1" for /l %%a in (0,1,%tmp_%) do bin\bg.exe print 8 "%test%"
+if "%color_on%"=="1" bin\bg.exe print 8 "%test_%"
 bin\bg.exe Locate 0 0
 echo.%hearts% %boom% 
 bin\bg.exe Locate %tmpp% %tmpside%
 echo.%tmpspc% GAME %tmpspc%
 bin\bg.exe Locate %tmp% %tmpside%
 echo.%tmpspc%PAUSED%tmpspc%
-bin\bg.exe Locate !tmp_2! 0
-set /p "=MUTED:%mute% COLOR:%color_on% DIFF:%difficulty% MEM:%mem%" <NUL
-bin\bg.exe Locate !tmp_! 0
-set /p "=SCORE:%score% LVL:%level% %char_gem%:%gems% " <NUL
-bin\getinput.exe
-set input=%errorlevel%
+if "%debug%"=="1" bin\bg.exe fcprint !tmp_2! 0 7 "XWIN:%xwin% YWIN:%ywin% VIEW:%view%\nMUTED:%mute% MUSIC:%music% COLOR:%color_on%\nDIFF:%difficulty% SPEED:%speed%  MEM:%mem%"
+bin\bg.exe fcprint !tmp_! 0 7 "SCORE:%score% LVL:%level% %char_gem%:%gems% "
+call :gam.input
 if "%input%"=="4" cls&call :gam.dev
 set tmp=
 set tmp_=
 set tmpp=
 set tmpside=
 set tmpspc=
+bin\bg.exe Locate 0 0
+bin\bg.exe print 8 "%test_%"
 if "%input%"=="3" set lives=0&call :gam.pause.timefix&del .pause 2>nul&goto :eof
 if "%input%"=="113" set lives=0&call :gam.pause.timefix&del .pause 2>nul&goto :eof
-if "%input%"=="27" call :gam.pause.timefix&del .pause 2>nul&goto :eof
+if "%input%"=="27" call :gam.pause.timefix&del .pause 2>nul&set ingame=1&goto :eof
 if "%input%"=="99" if "%color_on%"=="1" set color_on=-1
 if "%input%"=="99" if "%color_on%"=="0" set color_on=1&call :gam.conf.save
 if "%input%"=="99" if "%color_on%"=="-1" set color_on=0&call :gam.conf.save
 if "%input%"=="109" if "%mute%"=="1" set mute=-1
 if "%input%"=="109" if "%mute%"=="0" set mute=1&call :gam.conf.save
 if "%input%"=="109" if "%mute%"=="-1" set mute=0&call :gam.conf.save
+if "%input%"=="77" if "%music%"=="1" set music=-1
+if "%input%"=="77" if "%music%"=="0" set music=1&call :gam.conf.save
+if "%input%"=="77" if "%music%"=="-1" set music=0&call :gam.conf.save
 call :gam.refresh.icons
 ::m for mute 109
 ::c for color 99
@@ -600,6 +633,8 @@ goto :eof
 :gam.gameover
 title GaMe - Gameover
 ::Display last frame
+set ingame=0
+set /a id=%random% * 2
 set hearts=YOU DIED
 set refresh_top=1
 set x%x%-y%y%=X
@@ -617,53 +652,99 @@ call :ttt
 set /a bonus=(%level%*2)*(%difficulty%*2)+(%difficulty%*2)*(%damage%*2)
 set /a bonus=%bonus%+%ttt:~0,-2%
 set /a fs=%score%+%bonus%
-SetLocal EnableDelayedExpansion Enableextensions
-For /F %%a In ('Copy /Z "%~dpf0" Nul') Do Set "CR=%%a"
+setlocal enableDelayedExpansion
+for /l %%t in (0,2,%xwin%) do set /a tmpside=!tmpside!+1
+set /a tmpside=!tmpside!-16
+set sel_n=64
+bin\bg.exe Locate 0 0
+for /l %%a in (0,1,%ywin%) do bin\bg.exe print 8 "%test%"
+for /l %%a in (1,1,15) do bin\bg.exe Locate %%a %tmpside%&echo.                               
 :gam.name
 title GaMe - Gameover (%letter1%%letter2%%letter3%)
-cls
 ::Display scores/info
-echo.%test%
-echo.... GAME OVER
-echo.%test%
-echo.... Score: %score%
-echo.... Level: %level%
-echo.... Difficulty: %difficulty%
-echo.... Total Damage: %damage%
-echo.... GEMS: %gems%
-if not "%tttH%"=="00" echo.... Time: %tttH%:%tttM%:%tttS%.%tttQ%
-if "%tttH%"=="00" echo.... Time: %tttM%:%tttS%.%tttQ%
-echo.%test%
-echo.... Bonus: %bonus%
-echo.%test%
-echo.... Final Score: %fs%
-echo.%test%
-echo.Please Enter your initials:
-echo.%letter1% %letter2% %letter3%
-set "Key="
-For /F "Delims=" %%K In ('Xcopy /W "%~f0" "%~f0" 2^>Nul') Do (
-	If Not Defined Key (
-		Set "Key=%%K"
-		set "key=!Key:~-1!"
+bin\bg.exe fcprint 1 %tmpside% 4 "            GAME OVER"
+bin\bg.exe fcprint 2 %tmpside% 7 "_______________________________"
+bin\bg.exe fcprint 3 %tmpside% f "          Score: %score%
+bin\bg.exe fcprint 4 %tmpside% f "          Level: %level%
+bin\bg.exe fcprint 5 %tmpside% f "     Difficulty: %difficulty%
+bin\bg.exe fcprint 6 %tmpside% 4 "  %char_heart%" f " Total Damage: %damage%"
+bin\bg.exe fcprint 7 %tmpside% f "          " A "%char_gem% " f "GEMS: %gems%"
+if not "%tttH%"=="00" bin\bg.exe fcprint 8 %tmpside% f "           Time: %tttH%:%tttM%:%tttS%.%tttQ%"
+if "%tttH%"=="00" bin\bg.exe fcprint 8 %tmpside% f "           Time: %tttM%:%tttS%.%tttQ%"
+bin\bg.exe fcprint 9 %tmpside% 7 "_______________________________"
+bin\bg.exe fcprint 10 %tmpside% f "          Bonus: %bonus%"
+bin\bg.exe fcprint 11 %tmpside% 7 "_______________________________"
+bin\bg.exe fcprint 12 %tmpside% f "    Final Score: %fs%"
+bin\bg.exe fcprint 13 %tmpside% 7 "_______________________________"
+bin\bg.exe fcprint 14 %tmpside% f "  Please Enter your initials:"
+bin\bg.exe fcprint 15 %tmpside% f "             %letter1% %letter2% %letter3%"
+call :gam.input
+
+if "%input%"=="293" set /a sel_n=%sel_n%-1
+if "%input%"=="294" set /a sel_n=%sel_n%-1
+if "%input%"=="295" set /a sel_n=%sel_n%+1
+if "%input%"=="296" set /a sel_n=%sel_n%+1
+if "%input%"=="336" set /a sel_n=%sel_n%+1
+if "%input%"=="333" set /a sel_n=%sel_n%+1
+if "%input%"=="331" set /a sel_n=%sel_n%-1
+if "%input%"=="328" set /a sel_n=%sel_n%-1
+if "%sel_n%"=="64" set sel_n=90
+if "%sel_n%"=="63" set sel_n=90
+if "%sel_n%"=="91" set sel_n=65
+set key=
+set key_=
+for /L %%a in (97,1,126) do (
+	if "%%a"=="%input%" (
+		cmd /c exit %%a
+		set key=!=exitcodeAscii!
+	)
+)
+for /L %%a in (65,1,90) do (
+	if "%%a"=="%input%" (
+		cmd /c exit %%a
+		set key=!=exitcodeAscii!
+	)
+)
+for /L %%a in (48,1,57) do (
+	if "%%a"=="%input%" (
+		cmd /c exit %%a
+		set key=!=exitcodeAscii!
+	)
+)
+::97-122 a-z
+for /L %%a in (293,1,296) do (
+	if "%%a"=="%input%" (
+		cmd /c exit !sel_n!
+		set key_=!=exitcodeAscii!
+	)
+)
+for /L %%a in (328,1,336) do (
+	if "%%a"=="%input%" (
+		cmd /c exit !sel_n!
+		set key_=!=exitcodeAscii!
 	)
 )
 
-If /i "!Key!" Equ "!CR!" (
-  if "%letternum%"=="4" goto gam.upload
-  goto gam.name
+
+if "%input%"=="27" set letternum=1&set letter1=_&set letter2=_&set letter3=_
+if "%input%"=="27" if "%letternum%"=="1" if "%letter1%"=="_" if "%letter2%"=="_" if "%letter3%"=="_" goto gam.menu
+if "%input%"=="9" goto :gam.download
+if "%input%"=="13" goto gam.upload
+if "%input%"=="32" set /a letternum=%letternum% + 1&set sel_n=64&set key_=-
+if "%letternum%"=="4" if "%input%"=="32" goto gam.upload
+if "%input%"=="8" (
+	set letter!letternum!=_
+	if not "%letternum%"=="1" set /a letternum=%letternum% - 1
+	set key_=&set sel_n=64
 )
-If /i "!Key!" Equ "" (
-  if not "%letternum%"=="1" set /a letternum=%letternum% - 1
-  set letter!letternum!=_
-  goto gam.name
-)
-If /i "!Key!" Equ "	" (
-  goto :gam.download
-)
+if not "%key%"=="" set letter%letternum%=%key%
+if not "%key_%"=="" set letter%letternum%=%key_%
 if "%letternum%"=="4" goto gam.name
-set letter%letternum%=%key%
+if "%key%"=="" goto :gam.name
+if not "%key_%"=="" goto :gam.name
 set /a letternum=%letternum% + 1
 goto gam.name
+
 :upload.missing
 echo.Uploading previous scores...
 for /f "tokens=1-9 delims=;" %%a in ('type cache\offline.scores') do bin\wget --spider "http://%url%/game/score.php?name=%%a&fs=%%b&score=%%c&bonus=%%d&level=%%e&difficulty=%%f&gems=%%g&ttt=%%h&damage=%%i" 2>%log%
@@ -671,14 +752,14 @@ title
 del cache\offline.scores 2>nul
 goto :eof
 :gam.upload
-echo.%bs%%test%%bs%Uploading Score...
+echo.%test%Uploading Score...
 call :net.check
 set name=%letter1%%letter2%%letter3%
 set score_=%score%
 if "%score_:~0,-1%"=="" set score_=0%score%
 if "%connection%"=="0" echo.No Internet Connection. Could not upload score.&>>cache\offline.scores echo.%name%;%fs%;%score%;%bonus%;%level%;%difficulty%;%gems%;%tttH%:%tttM%:%tttS%.%tttQ%;%damage%&ping localhost -n 3 >nul&call :gam.score&goto :eof
 echo.Uploading Score...
-bin\wget --spider "http://%url%/game/score.php?name=%name%&fs=%fs%&score=%score%&bonus=%bonus%&level=%level%&difficulty=%difficulty%&gems=%gems%&ttt=%tttH%:%tttM%:%tttS%.%tttQ%" 2>%log%
+bin\wget --spider "http://%url%/game/score.php?name=%name%&fs=%fs%&score=%score%&bonus=%bonus%&level=%level%&difficulty=%difficulty%&gems=%gems%&ttt=%tttH%:%tttM%:%tttS%.%tttQ%&id=%id%" 2>%log%
 title 
 :gam.download
 if exist "cache\offline.scores" call :upload.missing
@@ -701,23 +782,36 @@ set difficulty=%diff_bak%
 ::Display scores
 title GaMe - Scores
 cls
-echo.   HIGH SCORES:
-echo.# Name: SCORE [DIFF:LVL][TIME]
-echo.%test%
-if not "%name%"=="" echo.%name%: %fs% [%difficulty%:%level%][%tttH%:%tttM%:%tttS%.%tttQ%]
-if not "%name%"=="" echo.%test%
+set tmpside=
+for /l %%t in (0,2,%xwin%) do set /a tmpside=!tmpside!+1
+set /a tmpside=!tmpside!-17
+bin\bg.exe Locate 0 0
+for /l %%a in (0,1,%ywin%) do bin\bg.exe print 8 "%test%"
+for /l %%a in (0,1,18) do bin\bg.exe fcprint %%a %tmpside% 8 "                                 "
+bin\bg.exe fcprint 0 %tmpside% f0 "                                 "
+bin\bg.exe fcprint 0 %tmpside% f0 "           HIGH SCORES"
+bin\bg.exe fcprint 1 %tmpside% f "#. Name: SCORE [DIFF:LVL][TIME]"
+if not "%name%"=="" bin\bg.exe fcprint 2 %tmpside% 70 "                                 "
+if not "%name%"=="" bin\bg.exe fcprint 2 %tmpside% 70 " * %name%: %fs% [%difficulty%:%level%][%tttH%:%tttM%:%tttS%.%tttQ%]"
+bin\bg.exe fcprint 3 %tmpside% f "_________________________________"
 set count=0
+set count_=3
 echo.y | del scores 2>nul >nul
 for /f %%s in ('dir /b /o:-n cache\scores\*') do (
 	::type cache\scores\%%s >>data\scores
 	if not "!count!"=="15" (
 		set /a count=!count!+1
-		for /f "tokens=1-9 delims=;" %%a in ('type cache\scores\%%s') do echo.!count!. %%a: %%b [%%f:%%e][%%h]
+		set /a count_=!count_!+1
+		for /f "tokens=1-10 delims=;" %%a in ('type cache\scores\%%s') do (
+			if "%%i"=="%id%" bin\bg.exe fcprint !count_! %tmpside% 70 "                                   "
+			if "%%i"=="%id%" bin\bg.exe fcprint !count_! %tmpside% 70 "!count!. %%a: %%b [%%f:%%e][%%h]"
+			if not "%%i"=="%id%" bin\bg.exe fcprint !count_! %tmpside% f "!count!. %%a: %%b [%%f:%%e][%%h]"
+		)
 	)
 )
-echo.%test%
 call :gam.input
 if "%input%"=="3" goto :gam.menu
+if "%input%"=="32" goto :gam.menu
 if "%input%"=="113" goto :gam.menu
 if "%input%"=="13" goto :gam.menu
 goto :gam.score
@@ -739,24 +833,6 @@ if not "%1"=="silent" echo.Making Music Script...
 >>bin\music.bat echo.:a
 >>bin\music.bat echo.cscript /nologo bin\music.vbs music
 >>bin\music.bat echo.goto a
-goto :eof
-:script.ic
-if not "%1"=="silent" echo.Making Input Controller Script...
-::Create program: Force the input without keypress.
->bin\inputcontroller.bat echo.title INPUTCONTROLLER
->>bin\inputcontroller.bat echo.:a
->>bin\inputcontroller.bat echo.if exist ".stop" del .stop^&exit
->>bin\inputcontroller.bat echo.if exist ".pause" ping localhost -n 2 ^>nul^&goto a
->>bin\inputcontroller.bat echo.taskkill /F /fi "imagename eq GetInput.exe"
-::>>bin\inputcontroller.bat echo.bin\bg.exe sleep %icrate%
->>bin\inputcontroller.bat echo.ping localhost -n 1 -l 1
-::Use Difficulty to calculate how much to sleep
-for /l %%z in (0,%difficulty%,%speed%) do (
-	>>bin\inputcontroller.bat echo.ping localhost -n 1 -l %%z
-	if not "%1"=="silent" echo.Delay %%z
-)
-::>>bin\inputcontroller.bat echo.^>^>.log echo.%%time%%
->>bin\inputcontroller.bat echo.goto :a
 goto :eof
 :codepage
 set /p "=Assigning Symbols... " <NUL
