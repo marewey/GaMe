@@ -1,7 +1,7 @@
 @echo off
 @SetLocal EnableDelayedExpansion Enableextensions
 set log=nul
-set version=1.3.2
+set version=1.3.2b
 mkdir cache\scores 2>nul
 mkdir data 2>nul
 set cd_=%cd%
@@ -389,7 +389,7 @@ set /a ywin_tmp=%ywin%-3
 title GaMe - Menu
 set name=
 set tmpside=
-bin\bg.exe locate 0 0&bin\bg.exe print 8 "%test_%"
+bin\bg.exe locate 0 0&bin\bg.exe print 26 "%test_%"
 for /l %%t in (0,2,%xwin%) do set /a tmpside=!tmpside!+1
 set /a tmpside=!tmpside!-16
 for /l %%a in (1,1,16) do bin\bg.exe fcprint %%a !tmpside! f "                               "
@@ -563,26 +563,25 @@ set ymax=%view%
 set /a pad=(%xwin%/2)-(%xmax%/2)-1
 set /a iseven=%xwin% %% 2
 set /a mem=%viewmax%+%rows%+5
-
 set sider=&set sidel=&set test=&set test_=&set xside=0
 ::Generate display shortcuts
 for /l %%x in (1,1,%xwin%) do (
-	set test=.!test!
+	set test=±!test!
 )
 for /l %%y in (0,1,%ywin%) do (
 	set test_=!test_!!test!
 )
 if "%iseven%"=="1" for /l %%x in (1,1,%pad%) do (
-	set sidel=.!sidel!
-	set sider=.!sider!
+	set sidel=±!sidel!
+	set sider=±!sider!
 	set /a xside=!xside!+1
 )
 if "%iseven%"=="0" (
 	for /l %%x in (2,1,%pad%) do (
-		set sidel=.!sidel!
+		set sidel=±!sidel!
 	)
 	for /l %%x in (1,1,%pad%) do (
-		set sider=.!sider!
+		set sider=±!sider!
 		set /a xside=!xside!+1
 	)
 )
@@ -662,15 +661,15 @@ title GaMe (Paused)
 copy nul .pause >nul 2>nul
 for /l %%t in (0,4,%ywin%) do set /a tmp=!tmp!+1
 for /l %%t in (4,4,%ywin%) do set /a tmpp=!tmpp!+1
-for /l %%t in (0,8,%xwin%) do set tmpspc=!tmpspc! 
+for /l %%t in (0,8,%xwin%) do set tmpspc=!tmpspc! &set /a tmpspc_c=!tmpspc_c!+1
 for /l %%t in (0,2,%xwin%) do set /a tmpside=!tmpside!+1
-set /a tmpside=!tmpside!-8
+set /a tmpside=!tmpside!-(!tmpspc_c!+4)
 set /a tmp_=%ywin%-2
 set /a tmp_2=%ywin%-5
 bin\bg.exe Locate 0 0
 if "%color_on%"=="0" for /l %%a in (0,1,%tmp_%) do echo.%test%
 if "%color_on%"=="1" bin\bg.exe print 8 "%test_%"
-bin\bg.exe Locate 0 0
+bin\bg.exe Locate 0 1
 echo.%hearts% %boom% 
 bin\bg.exe Locate %tmpp% %tmpside%
 echo.%tmpspc% GAME %tmpspc%
@@ -685,6 +684,7 @@ set tmp_=
 set tmpp=
 set tmpside=
 set tmpspc=
+set tmpspc_c=
 bin\bg.exe Locate 0 0
 bin\bg.exe print 8 "%test_%"
 if "%input%"=="3" set lives=0&call :gam.pause.timefix&del .pause 2>nul&goto :eof
@@ -876,8 +876,10 @@ set tmpside=
 for /l %%t in (0,2,%xwin%) do set /a tmpside=!tmpside!+1
 set /a tmpside=!tmpside!-17
 bin\bg.exe Locate 0 0
+set /a showcount=!ywin!-6
+set /a scores_to_show=!showcount!+3
 for /l %%a in (0,1,%ywin%) do bin\bg.exe print 8 "%test%"
-for /l %%a in (0,1,18) do bin\bg.exe fcprint %%a %tmpside% 8 "                                 "
+for /l %%a in (0,1,%scores_to_show%) do bin\bg.exe fcprint %%a %tmpside% 8 "                                 "
 bin\bg.exe fcprint 0 %tmpside% f0 "                                 "
 bin\bg.exe fcprint 0 %tmpside% f0 "           HIGH SCORES"
 bin\bg.exe fcprint 1 %tmpside% f "#. Name: SCORE [DIFF:LVL][TIME]"
@@ -889,11 +891,11 @@ set count_=3
 echo.y | del scores 2>nul >nul
 for /f %%s in ('dir /b /o:-n cache\scores\*') do (
 	::type cache\scores\%%s >>data\scores
-	if not "!count!"=="15" (
+	if not "!count!"=="%showcount%" (
 		set /a count=!count!+1
 		set /a count_=!count_!+1
 		for /f "tokens=1-10 delims=;" %%a in ('type cache\scores\%%s') do (
-			if "%%i"=="%id%" bin\bg.exe fcprint !count_! %tmpside% 70 "                                   "
+			if "%%i"=="%id%" bin\bg.exe fcprint !count_! %tmpside% 70 "                                 "
 			if "%%i"=="%id%" bin\bg.exe fcprint !count_! %tmpside% 70 "!count!. %%a: %%b [%%f:%%e][%%h]"
 			if not "%%i"=="%id%" bin\bg.exe fcprint !count_! %tmpside% f "!count!. %%a: %%b [%%f:%%e][%%h]"
 		)
