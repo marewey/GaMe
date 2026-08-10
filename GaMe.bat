@@ -1,7 +1,7 @@
 @echo off
 @SetLocal EnableDelayedExpansion Enableextensions
 set log=nul
-set version=1.3.2b
+set version=1.3.2
 mkdir cache\scores 2>nul
 mkdir data 2>nul
 set cd_=%cd%
@@ -183,22 +183,22 @@ set /a tmpside=!tmpside!-8
 set /a tmpheight=!ywin!-3
 bin\bg.exe fcprint !tmpheight! !tmpside! F "Loading Game..."
 set /a tmpheight=!tmpheight!+1
-set /a lbs=(180-%window_width%)
+set /a lbs=(120-%window_width%)
 set /a xwin_tmp=!xwin!-2
 for /l %%a in (1,1,!xwin_tmp!) do (
 	set /a sleep_=%%a / 2 + !random! %% %lbs%
-	bin\bg.exe fcprint !tmpheight! %%a F "€"
+	bin\bg.exe fcprint !tmpheight! %%a F "‚ñà"
 	bin\bg.exe sleep !sleep_!
 	if "%%a"=="10" call :script.music silent
+	if "%%a"=="13" call :gam.refresh.icons
+	if "%%a"=="16" call :gam.load
 )
 set ingame=1
 set tmpside=
-call :gam.load
+set refresh_top=1
 call :gam.music 1
 bin\bg.exe Locate 0 0
 bin\bg.exe print 8 "%test_%"
-set refresh_top=1
-call :gam.refresh.icons
 title GaMe
 set tptC=0
 set tss=%time%
@@ -277,7 +277,7 @@ if "%color_on%"=="1" (
 			if %lives% leq 0 if "!x%%x-y%%y!"=="X" set line%%y=!line%%y!" C4 "X" F "
 			if not "!x%%x-y%%y!"=="%char_heart%" if not "!x%%x-y%%y!"=="%char_gem%" if not "!x%%x-y%%y!"=="%char_sun%" if not "!x%%x-y%%y!"=="%char_down%" if not "!x%%x-y%%y!"=="X" set line%%y=!line%%y!!x%%x-y%%y!
 		)
-		set color_stack=!color_stack! 8 "%sidel%" F "∫!line%%y!∫" 8 "\n"
+		set color_stack=!color_stack! 8 "%sidel%" F "‚îÇ!line%%y!‚îÇ" 8 "\n"
 		set line%%y=
 	)
 	::bin\bg.exe print !color_stack!
@@ -525,16 +525,16 @@ for /l %%y in (%start%,1,%end%) do (
 		if !num! geq 0 if !num! leq %boomSeed% set char=%char_sun%
 		if !num! geq 100 if !num! leq %heartSeed% set char=%char_heart%
 		if !num! geq 200 if !num! leq %gemSeed% set char=%char_gem%
-		if !num! geq 50 if !num! leq %prb0% set char=ﬁ
+		if !num! geq 50 if !num! leq %prb0% set char=‚ñë
 		if !num! geq 150 if !num! leq %prb1% set char=@
 		if !num! geq 250 if !num! leq %prb2% set char=#
-		if !num! geq 300 if !num! leq %prb3% set char=€
-		if !num! geq 400 if !num! leq %prb4% set char=≤
-		if !num! geq 500 if !num! leq %prb5% set char=›
-		if !num! geq 600 if !num! leq %prb6% set char=∞
-		if !num! geq 700 if !num! leq %prb7% set char=±
-		if !num! geq 800 if !num! leq %prb8% set char=ﬂ
-		if !num! geq 900 if !num! leq %prb9% set char=‹
+		if !num! geq 300 if !num! leq %prb3% set char=‚ñí
+		if !num! geq 400 if !num! leq %prb4% set char=‚ñì
+		if !num! geq 500 if !num! leq %prb5% set char=‚ñà
+		if !num! geq 600 if !num! leq %prb6% set char=‚ñÑ
+		if !num! geq 700 if !num! leq %prb7% set char=‚ñÄ
+		if !num! geq 800 if !num! leq %prb8% set char=‚ñå
+		if !num! geq 900 if !num! leq %prb9% set char=‚ñê
 		set x%%x-y%%y=!char!
 	)
 )
@@ -566,22 +566,22 @@ set /a mem=%viewmax%+%rows%+5
 set sider=&set sidel=&set test=&set test_=&set xside=0
 ::Generate display shortcuts
 for /l %%x in (1,1,%xwin%) do (
-	set test=±!test!
+	set test=‚ñë!test!
 )
 for /l %%y in (0,1,%ywin%) do (
 	set test_=!test_!!test!
 )
 if "%iseven%"=="1" for /l %%x in (1,1,%pad%) do (
-	set sidel=±!sidel!
-	set sider=±!sider!
+	set sidel=‚ñë!sidel!
+	set sider=‚ñë!sider!
 	set /a xside=!xside!+1
 )
 if "%iseven%"=="0" (
 	for /l %%x in (2,1,%pad%) do (
-		set sidel=±!sidel!
+		set sidel=‚ñë!sidel!
 	)
 	for /l %%x in (1,1,%pad%) do (
-		set sider=±!sider!
+		set sider=‚ñë!sider!
 		set /a xside=!xside!+1
 	)
 )
@@ -757,8 +757,8 @@ bin\bg.exe fcprint 2 %tmpside% 7 "_______________________________"
 bin\bg.exe fcprint 3 %tmpside% f "          Score: %score%
 bin\bg.exe fcprint 4 %tmpside% f "          Level: %level%
 bin\bg.exe fcprint 5 %tmpside% f "     Difficulty: %difficulty%
-bin\bg.exe fcprint 6 %tmpside% 4 "  %char_heart%" f " Total Damage: %damage%"
-bin\bg.exe fcprint 7 %tmpside% f "          " A "%char_gem% " f "GEMS: %gems%"
+bin\bg.exe fcprint 6 %tmpside% 4 " %char_heart%" f " Total Damage: %damage%"
+bin\bg.exe fcprint 7 %tmpside% f "         " A "%char_gem% " f "GEMS: %gems%"
 if not "%tttH%"=="00" bin\bg.exe fcprint 8 %tmpside% f "           Time: %tttH%:%tttM%:%tttS%.%tttQ%"
 if "%tttH%"=="00" bin\bg.exe fcprint 8 %tmpside% f "           Time: %tttM%:%tttS%.%tttQ%"
 bin\bg.exe fcprint 9 %tmpside% 7 "_______________________________"
@@ -947,7 +947,7 @@ set "char_heart=‚ô•"
 set /p "=%char_heart% " <NUL
 set "char_sun=‚òº"
 set /p "=%char_sun% " <NUL
-chcp.com %CONSOLE_CODEPAGE% >nul
+::chcp.com %CONSOLE_CODEPAGE% >nul
 :: /\ Restore the previous console codepage.
 echo.
 if not "%codepage_check%"=="0" set /a error=%error%+1
