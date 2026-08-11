@@ -1,138 +1,37 @@
 # -*- coding: utf-8 -*-
 """
-Gems and Meteors - Python Graphical (Pygame) Version
+Gems and Meteors - Python Graphical (Tkinter) Version
 Created by Jules
-Natively self-installs pygame, downloads assets from the remote server if missing,
-supports Endless and Level Modes, active enemies, bullet systems, configurable spaceships,
-local scoreboards, starry backgrounds, and particle explosions.
+Utilizes Python's native standard library Tkinter for a 100% zero-dependency,
+zero-compile graphical arcade game that runs flawlessly on any python version (including 3.14+).
 """
 
 import os
 import sys
 import time
 import random
-import urllib.request
-import subprocess
-
-# Self-install pygame if missing
-try:
-    import pygame
-except ImportError:
-    print("Installing Pygame library for graphical interface...")
-    try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "pygame"])
-        import pygame
-    except Exception as e:
-        print(f"Could not automatically install pygame: {e}")
-        print("Please install it manually using: pip install pygame")
-        sys.exit(1)
+import tkinter as tk
+from tkinter import messagebox
+import threading
 
 # Ensure data and cache folders exist
 os.makedirs("cache", exist_ok=True)
 os.makedirs("data", exist_ok=True)
 
-# Remote server configuration
-URL_PREFIX = "http://markspi.ddns.me/game/sounds/"
-ASSETS = {
-    "music.mp3": "music.mp3",
-    "boom.wav": "boom.wav",
-    "damage.wav": "damage.wav",
-    "gem.wav": "gem.wav",
-    "heart.wav": "heart.wav"
-}
-
-def download_asset_if_missing(filename):
-    filepath = os.path.join("cache", filename)
-    if not os.path.exists(filepath):
-        print(f"Downloading missing asset {filename} from server...")
-        try:
-            url = URL_PREFIX + filename
-            urllib.request.urlretrieve(url, filepath)
-            print(f"Successfully downloaded {filename}.")
-        except Exception as e:
-            print(f"Could not download {filename} from server (offline or server issues): {e}")
-
-# Download all assets
-for asset_name in ASSETS.values():
-    download_asset_if_missing(asset_name)
-
-# Initialize Pygame
-pygame.init()
-pygame.mixer.init()
-
-# Window Setup
-WIDTH, HEIGHT = 600, 800
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Gems and Meteors - Graphical Edition")
-clock = pygame.time.Clock()
-
 # Color Definitions
-COLOR_BG = (10, 10, 25)
-COLOR_WHITE = (255, 255, 255)
-COLOR_GREY = (120, 120, 120)
-COLOR_RED = (240, 50, 50)
-COLOR_GREEN = (50, 240, 50)
-COLOR_BLUE = (50, 150, 255)
-COLOR_YELLOW = (240, 220, 50)
-COLOR_CYAN = (50, 240, 240)
-COLOR_MAGENTA = (240, 50, 240)
+COLOR_BG = "#0A0A19"
+COLOR_WHITE = "#FFFFFF"
+COLOR_GREY = "#787878"
+COLOR_RED = "#F03232"
+COLOR_GREEN = "#32F032"
+COLOR_BLUE = "#3296FF"
+COLOR_YELLOW = "#F0DC32"
+COLOR_CYAN = "#32F0F0"
 
-# Load Sound Objects cleanly
-sounds = {}
-for name, filename in ASSETS.items():
-    filepath = os.path.join("cache", filename)
-    if os.path.exists(filepath):
-        try:
-            if name == "music.mp3":
-                pass # Play via pygame.mixer.music
-            else:
-                sounds[name] = pygame.mixer.Sound(filepath)
-        except Exception:
-            pass
-
-def play_sfx(name):
-    if not settings_mute and name in sounds:
-        sounds[name].play()
-
-def play_music():
-    if not settings_mute:
-        music_path = os.path.join("cache", "music.mp3")
-        if os.path.exists(music_path):
-            try:
-                pygame.mixer.music.load(music_path)
-                pygame.mixer.music.play(-1)
-            except Exception:
-                pass
-
-def stop_music():
-    pygame.mixer.music.stop()
-
-# Game State Configs
-settings_gmode = 1 # 1: Levels, 0: Endless
-settings_difficulty = 1 # 1: Easy, 2: Medium, 3: Hard, 4: Expert
-settings_sym_idx = 0
+# Settings
+gmode = 1 # 1: Levels, 0: Endless
+difficulty = 1 # 1-4
 settings_mute = False
-
-SPACESHIP_TEMPLATES = [
-    "UFO Classic",
-    "Arrow Ship",
-    "Starfighter",
-    "Vanguard"
-]
-
-# Star background generator
-stars = [[random.randint(0, WIDTH), random.randint(0, HEIGHT), random.uniform(1, 3.5)] for _ in range(120)]
-
-def draw_starry_bg(scroll_speed=1.5):
-    screen.fill(COLOR_BG)
-    for star in stars:
-        # Move star down
-        star[1] += star[2] * scroll_speed
-        if star[1] > HEIGHT:
-            star[1] = 0
-            star[0] = random.randint(0, WIDTH)
-        color_val = int(star[2] * 70)
-        pygame.draw.circle(screen, (color_val, color_val, color_val + 30), (int(star[0]), int(star[1])), int(star[2]))
 
 # High Scores Database
 local_scores = []
@@ -167,609 +66,586 @@ def save_local_score(name, fs, score_val, bonus, lvl, diff, gms, dmg):
     except Exception:
         pass
 
-def draw_text(text, font, color, x, y, center=True):
-    surf = font.render(text, True, color)
-    rect = surf.get_rect()
-    if center:
-        rect.center = (x, y)
-    else:
-        rect.topleft = (x, y)
-    screen.blit(surf, rect)
+def play_sfx(filename):
+    if settings_mute or os.name != 'nt':
+        return
+    import winsound
+    filepath = os.path.join("cache", filename)
+    if os.path.exists(filepath):
+        threading.Thread(target=winsound.PlaySound, args=(filepath, winsound.SND_FILENAME | winsound.SND_ASYNC), daemon=True).start()
+
+class GameApp(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("Gems and Meteors - Graphical Edition")
+        self.geometry("600x800")
+        self.resizable(False, False)
+        self.configure(bg=COLOR_BG)
+
+        # Star Background Setup
+        self.stars = [[random.randint(0, 600), random.randint(0, 800), random.uniform(1, 3.5)] for _ in range(80)]
+
+        self.show_main_menu()
+
+    def show_main_menu(self):
+        self.clear_screen()
+
+        # Canvas for Title and starry background
+        self.canvas = tk.Canvas(self, width=600, height=800, bg=COLOR_BG, highlightthickness=0)
+        self.canvas.pack(fill="both", expand=True)
+
+        self.draw_stars_on_canvas()
+
+        # Render Title Text
+        self.canvas.create_text(300, 120, text="GEMS AND METEORS", font=("Courier New", 36, "bold"), fill=COLOR_CYAN)
+        self.canvas.create_text(300, 170, text="Graphical Edition (Tkinter)", font=("Courier New", 18), fill=COLOR_WHITE)
+
+        # Add buttons using Tkinter labels with elegant styles
+        self.create_menu_button("Start Game", 280, self.start_game)
+        self.create_menu_button(f"Game Mode: {'Levels' if gmode == 1 else 'Endless'}", 340, self.toggle_gmode)
+        self.create_menu_button(f"Difficulty: {difficulty}", 400, self.toggle_difficulty)
+        self.create_menu_button(f"Sound: {'Muted' if settings_mute else 'ON'}", 460, self.toggle_sound)
+        self.create_menu_button("Leaderboard", 520, self.show_leaderboard)
+        self.create_menu_button("Controls & Help", 580, self.show_help)
+        self.create_menu_button("Quit Game", 640, self.quit)
+
+        self.menu_running = True
+        self.animate_menu()
+
+    def create_menu_button(self, text, y, callback):
+        btn = tk.Label(self.canvas, text=text, font=("Courier New", 18, "bold"), fg=COLOR_WHITE, bg=COLOR_BG, cursor="hand2")
+        btn.bind("<Enter>", lambda e: btn.configure(fg=COLOR_GREEN))
+        btn.bind("<Leave>", lambda e: btn.configure(fg=COLOR_WHITE))
+        btn.bind("<Button-1>", lambda e: callback())
+        self.canvas.create_window(300, y, window=btn)
+
+    def draw_stars_on_canvas(self):
+        self.canvas.delete("star")
+        for s in self.stars:
+            s[1] += s[2] * 0.5
+            if s[1] > 800:
+                s[1] = 0
+                s[0] = random.randint(0, 600)
+            col = int(s[2] * 70)
+            rgb = f"#{col:02x}{col:02x}{min(255, col+30):02x}"
+            sz = int(s[2])
+            self.canvas.create_oval(s[0], s[1], s[0]+sz, s[1]+sz, fill=rgb, outline="", tags="star")
+
+    def animate_menu(self):
+        if hasattr(self, "menu_running") and self.menu_running:
+            self.draw_stars_on_canvas()
+            # Bring text/buttons to top
+            self.canvas.tag_raise("star")
+            self.canvas.tag_lower("star")
+            self.after(50, self.animate_menu)
+
+    def clear_screen(self):
+        self.menu_running = False
+        for widget in self.winfo_children():
+            widget.destroy()
+
+    def toggle_gmode(self):
+        global gmode
+        gmode = 1 - gmode
+        self.show_main_menu()
+
+    def toggle_difficulty(self):
+        global difficulty
+        difficulty = difficulty + 1 if difficulty < 4 else 1
+        self.show_main_menu()
+
+    def toggle_sound(self):
+        global settings_mute
+        settings_mute = not settings_mute
+        self.show_main_menu()
+
+    def show_leaderboard(self):
+        load_scores()
+        self.clear_screen()
+
+        self.canvas = tk.Canvas(self, width=600, height=800, bg=COLOR_BG, highlightthickness=0)
+        self.canvas.pack(fill="both", expand=True)
+
+        self.canvas.create_text(300, 100, text="LOCAL LEADERBOARD", font=("Courier New", 28, "bold"), fill=COLOR_YELLOW)
 
-# Main Game Loop
-def run_game():
-    global settings_gmode, settings_difficulty, settings_sym_idx, settings_mute
+        headers = f"{'Rank':<6}{'Name':<10}{'Score':<12}{'Level':<8}{'Diff':<8}"
+        self.canvas.create_text(300, 180, text=headers, font=("Courier New", 16, "bold"), fill=COLOR_CYAN)
 
-    cols = 13 if settings_difficulty == 1 else (11 if settings_difficulty == 2 else (9 if settings_difficulty == 3 else 7))
-    cell_w = 400 // cols
-    cell_h = 32
-    map_x_offset = (WIDTH - 400) // 2
+        for idx, s in enumerate(local_scores[:10]):
+            line = f"#{idx+1:<5}{s['name']:<10}{s['fs']:<12}{s['level']:<8}{s['difficulty']:<8}"
+            self.canvas.create_text(300, 220 + idx * 35, text=line, font=("Courier New", 14), fill=COLOR_WHITE)
 
-    # Map grid of rows
-    map_rows = [[" " for _ in range(cols)] for _ in range(22)]
+        self.create_menu_button("Return to Menu", 680, self.show_main_menu)
+        self.menu_running = True
+        self.animate_menu()
 
-    # Player position (near top)
-    player_col = cols // 2
-    player_row = 3
+    def show_help(self):
+        self.clear_screen()
+        self.canvas = tk.Canvas(self, width=600, height=800, bg=COLOR_BG, highlightthickness=0)
+        self.canvas.pack(fill="both", expand=True)
 
-    score = 0
-    gems_count = 0
-    lives = 3
-    special_shields = 0
-    bullets_left = 10
-    level = 1
-    damage_taken = 0
+        self.canvas.create_text(300, 100, text="CONTROLS & HELP", font=("Courier New", 28, "bold"), fill=COLOR_YELLOW)
 
-    player_bullets = [] # list of [col, row]
-    enemy_bullets = [] # list of [col, row]
-
-    level_goal_row = 150
-    level_scroll_count = 0
-
-    speed_fps = {1: 8, 2: 12, 3: 18, 4: 24}
-    current_fps = speed_fps[settings_difficulty]
-
-    # Particles for animations
-    particles = [] # list of [x, y, dx, dy, color, size, age]
-
-    def add_explosion(x, y, color):
-        for _ in range(20):
-            particles.append([
-                x, y,
-                random.uniform(-4, 4), random.uniform(-4, 4),
-                color,
-                random.randint(3, 7),
-                20
-            ])
-
-    play_music()
-
-    running = True
-    paused = False
-    game_over = False
-
-    font_large = pygame.font.Font(None, 48)
-    font_med = pygame.font.Font(None, 32)
-    font_small = pygame.font.Font(None, 24)
-
-    # Move player smoothly
-    move_cooldown = 0
-
-    while running:
-        dt = clock.tick(30)
-
-        # Input Events
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    paused = not paused
-                    if paused:
-                        stop_music()
-                    else:
-                        play_music()
-                elif (event.key == pygame.K_SPACE or event.key == pygame.K_RETURN) and not paused and not game_over:
-                    # Fire Weapon
-                    if settings_gmode == 1:
-                        if bullets_left > 0:
-                            bullets_left -= 1
-                            player_bullets.append([player_col, player_row + 1]) # fires down, +y relative
-                            play_sfx("damage.wav")
-                        elif special_shields > 0:
-                            special_shields -= 1
-                            bullets_left = 9
-                            player_bullets.append([player_col, player_row + 1]) # fires down, +y relative
-                            play_sfx("boom.wav")
-                    else:
-                        # Original boom clear in Endless
-                        if special_shields > 0:
-                            special_shields -= 1
-                            play_sfx("boom.wav")
-                            for r in range(len(map_rows)):
-                                for c in range(cols):
-                                    if map_rows[r][c] not in (" ", "G", "H", "S"):
-                                        map_rows[r][c] = "."
-                                        add_explosion(map_x_offset + c * cell_w + cell_w//2, r * cell_h + cell_h//2, COLOR_WHITE)
-
-        if paused:
-            # Draw pause overlay
-            draw_starry_bg(0.2)
-            pygame.draw.rect(screen, (20, 20, 40, 200), (100, 200, 400, 400))
-            draw_text("GAME PAUSED", font_large, COLOR_RED, WIDTH//2, 250)
-
-            draw_text("[1] Resume Game", font_med, COLOR_WHITE, WIDTH//2, 350)
-            draw_text(f"[2] Toggle Sound: {'Muted' if settings_mute else 'Sound ON'}", font_med, COLOR_WHITE, WIDTH//2, 410)
-            draw_text("[3] Quit to Main Menu", font_med, COLOR_WHITE, WIDTH//2, 470)
-
-            pygame.display.flip()
-
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_1]:
-                paused = False
-                play_music()
-            elif keys[pygame.K_2]:
-                settings_mute = not settings_mute
-                if settings_mute: stop_music()
-                else: play_music()
-                time.sleep(0.2)
-            elif keys[pygame.K_3]:
-                stop_music()
-                return
-
-            continue
-
-        if game_over:
-            draw_starry_bg(0.1)
-            pygame.draw.rect(screen, (20, 10, 10, 220), (80, 150, 440, 500))
-            draw_text("GAME OVER", font_large, COLOR_RED, WIDTH//2, 200)
-
-            lvl_bonus = level * 10 * settings_difficulty
-            final_fs = score + lvl_bonus
-
-            draw_text(f"Raw Score: {score}", font_med, COLOR_WHITE, WIDTH//2, 280)
-            draw_text(f"Level Bonus: +{lvl_bonus}", font_med, COLOR_WHITE, WIDTH//2, 330)
-            draw_text(f"Final Score: {final_fs}", font_large, COLOR_GREEN, WIDTH//2, 390)
-
-            draw_text("Enter your 3 initials:", font_med, COLOR_YELLOW, WIDTH//2, 460)
-
-            if "name_str" not in locals():
-                name_str = ""
-
-            draw_text(f"{name_str if name_str else '___'}", font_large, COLOR_WHITE, WIDTH//2, 520)
-            draw_text("[Press letters A-Z to type, Enter to Save]", font_small, COLOR_GREY, WIDTH//2, 580)
-
-            pygame.display.flip()
-
-            for event in pygame.event.get(pygame.KEYDOWN):
-                if event.key == pygame.K_RETURN and len(name_str) == 3:
-                    save_local_score(name_str, final_fs, score, lvl_bonus, level, settings_difficulty, gems_count, damage_taken)
-                    running = False
-                elif event.key == pygame.K_BACKSPACE:
-                    name_str = name_str[:-1]
-                elif len(name_str) < 3 and event.unicode.isalpha():
-                    name_str += event.unicode.upper()
-            continue
-
-        if move_cooldown > 0:
-            move_cooldown -= 1
-
-        keys = pygame.key.get_pressed()
-        if move_cooldown == 0:
-            if keys[pygame.K_LEFT] or keys[pygame.K_a]:
-                if player_col > 0:
-                    player_col -= 1
-                    move_cooldown = 2
-            elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
-                if player_col < cols - 1:
-                    player_col += 1
-                    move_cooldown = 2
-
-        level_scroll_count += 1
-        score += 1
-
-        # Dynamic difficulty speed scaling
-        if score % 200 == 0:
-            current_fps = min(40, current_fps + 1)
-
-        # Scroll Map downwards
-        map_rows.pop(0)
-        new_row = [" " for _ in range(cols)]
-
-        # Level Mode completion generation
-        if settings_gmode == 1:
-            if level_scroll_count == level_goal_row:
-                for c in range(cols):
-                    new_row[c] = "═"
-                new_row[cols // 2] = " "
-            elif level_scroll_count > level_goal_row - 10 and level_scroll_count <= level_goal_row + 5:
-                pass
-            else:
-                for c in range(cols):
-                    num = random.randint(0, 999)
-                    if num < 8: new_row[c] = "S" # Shield
-                    elif num >= 100 and num <= 108: new_row[c] = "H" # Heart
-                    elif num >= 200 and num <= 215: new_row[c] = "G" # Gem
-                    elif num >= 50 and num <= 60 + settings_difficulty * 10:
-                        new_row[c] = "M" # Meteor
-        else:
-            for c in range(cols):
-                num = random.randint(0, 999)
-                if num < 8: new_row[c] = "S"
-                elif num >= 100 and num <= 108: new_row[c] = "H"
-                elif num >= 200 and num <= 215: new_row[c] = "G"
-                elif num >= 50 and num <= 60 + settings_difficulty * 10:
-                    new_row[c] = "M"
-
-        map_rows.append(new_row)
-
-        # Verify Landing Strip reaching (Level Mode)
-        if settings_gmode == 1 and level_scroll_count >= level_goal_row:
-            if player_row == len(map_rows) - 4 or level_scroll_count == level_goal_row + 5:
-                if player_col == cols // 2:
-                    play_sfx("heart.wav")
-                    add_explosion(WIDTH//2, HEIGHT//2, COLOR_GREEN)
-                    score += level * 500
-                    level += 1
-                    level_scroll_count = 0
-                    map_rows = [[" " for _ in range(cols)] for _ in range(22)]
-                    player_bullets = []
-                    enemy_bullets = []
-                    bullets_left = 10
-                    continue
-                else:
-                    lives -= 1
-                    damage_taken += 1
-                    play_sfx("damage.wav")
-                    level_scroll_count = level_goal_row - 12
-
-        # Update Player Lasers (moving DOWN screen, +y relative)
-        active_pbullets = []
-        for b in player_bullets:
-            bc, br = b
-            hit = False
-            for step in range(3):
-                test_r = br + step
-                if test_r < len(map_rows):
-                    cell = map_rows[test_r][bc]
-                    if cell != " " and cell != "P" and cell != "O" and cell != "▲" and cell != "•" and cell != "↑":
-                        hit = True
-                        map_rows[test_r][bc] = " "
-                        cell_cx = map_x_offset + bc * cell_w + cell_w//2
-                        cell_cy = test_r * cell_h + cell_h//2
-                        if cell == "G":
-                            gems_count += 1
-                            score += 5 * settings_difficulty + 5
-                            play_sfx("gem.wav")
-                            add_explosion(cell_cx, cell_cy, COLOR_GREEN)
-                        elif cell == "H":
-                            lives = min(10, lives + 1)
-                            play_sfx("heart.wav")
-                            add_explosion(cell_cx, cell_cy, COLOR_RED)
-                        elif cell == "S":
-                            special_shields = min(5, special_shields + 1)
-                            play_sfx("boom.wav")
-                            add_explosion(cell_cx, cell_cy, COLOR_CYAN)
-                        else:
-                            # Hit Meteor
-                            map_rows[test_r][bc] = "."
-                            play_sfx("damage.wav")
-                            add_explosion(cell_cx, cell_cy, COLOR_GREY)
-                        break
-                    elif cell == "▲":
-                        # Hit enemy ship directly!
-                        hit = True
-                        map_rows[test_r][bc] = " "
-                        score += 1000
-                        play_sfx("boom.wav")
-                        add_explosion(map_x_offset + bc * cell_w + cell_w//2, test_r * cell_h + cell_h//2, COLOR_YELLOW)
-                        break
-            if not hit:
-                new_br = br + 3
-                if new_br < len(map_rows):
-                    active_pbullets.append([bc, new_br])
-        player_bullets = active_pbullets
-
-        # Update Enemy Lasers (moving UP screen, -y relative)
-        active_ebullets = []
-        for eb in enemy_bullets:
-            ebc, ebr = eb
-            hit = False
-            for step in range(2):
-                test_r = ebr - step
-                if test_r >= 0:
-                    if test_r == player_row and ebc == player_col:
-                        hit = True
-                        lives -= 1
-                        damage_taken += 1
-                        play_sfx("damage.wav")
-                        add_explosion(map_x_offset + player_col * cell_w + cell_w//2, player_row * cell_h + cell_h//2, COLOR_RED)
-                        break
-            if not hit:
-                new_ebr = ebr - 2
-                if new_ebr >= 0:
-                    active_ebullets.append([ebc, new_ebr])
-        enemy_bullets = active_ebullets
-
-        # Update Enemies on map (scrolling up naturally, moving side-to-side, and shooting UP)
-        if settings_gmode == 1:
-            for r in range(len(map_rows) - 1, -1, -1):
-                for c in range(cols):
-                    if map_rows[r][c] == "▲":
-                        map_rows[r][c] = " "
-                        move = random.choice([-1, 0, 1])
-                        new_c = max(0, min(cols - 1, c + move))
-                        # Fire bullet upwards (-y)
-                        if random.randint(0, 5) == 0:
-                            enemy_bullets.append([new_c, r - 1])
-                        if r < len(map_rows):
-                            map_rows[r][new_c] = "▲"
-
-            # Spawn active enemies
-            if level_scroll_count % 15 == 0 and level_scroll_count < level_goal_row - 10:
-                spawn_c = random.randint(0, cols - 1)
-                if map_rows[len(map_rows) - 1][spawn_c] == " ":
-                    map_rows[len(map_rows) - 1][spawn_c] = "▲"
-
-        # Resolve player direct collisions
-        player_cell = map_rows[player_row][player_col]
-        if player_cell != " ":
-            map_rows[player_row][player_col] = " "
-            cell_cx = map_x_offset + player_col * cell_w + cell_w//2
-            cell_cy = player_row * cell_h + cell_h//2
-            if player_cell == "G":
-                gems_count += 1
-                score += 5 * settings_difficulty + 5
-                play_sfx("gem.wav")
-                add_explosion(cell_cx, cell_cy, COLOR_GREEN)
-            elif player_cell == "H":
-                lives = min(10, lives + 1)
-                play_sfx("heart.wav")
-                add_explosion(cell_cx, cell_cy, COLOR_RED)
-            elif player_cell == "S":
-                special_shields = min(5, special_shields + 1)
-                play_sfx("boom.wav")
-                add_explosion(cell_cx, cell_cy, COLOR_CYAN)
-            elif player_cell in ("▲", "•", "↑"):
-                lives -= 1
-                damage_taken += 1
-                play_sfx("damage.wav")
-                add_explosion(cell_cx, cell_cy, COLOR_RED)
-            else:
-                damage_taken += 1
-                play_sfx("damage.wav")
-                add_explosion(cell_cx, cell_cy, COLOR_GREY)
-                if special_shields > 0:
-                    special_shields -= 1
-                    lives -= 1
-                else:
-                    lives -= 3
-
-        if lives <= 0:
-            stop_music()
-            game_over = True
-
-        # DRAW ACTIVE FRAME
-        draw_starry_bg(1.5)
-
-        # Draw Side Borders
-        pygame.draw.line(screen, COLOR_WHITE, (map_x_offset, 0), (map_x_offset, HEIGHT), 2)
-        pygame.draw.line(screen, COLOR_WHITE, (map_x_offset + cols * cell_w, 0), (map_x_offset + cols * cell_w, HEIGHT), 2)
-
-        # Draw Map cells
-        for r in range(len(map_rows)):
-            for c in range(cols):
-                cell = map_rows[r][c]
-                rx = map_x_offset + c * cell_w
-                ry = r * cell_h
-
-                is_bullet = any(b[0] == c and b[1] == r for b in player_bullets)
-                is_ebullet = any(eb[0] == c and eb[1] == r for eb in enemy_bullets)
-
-                if r == player_row and c == player_col:
-                    ship_color = COLOR_CYAN
-                    points = [
-                        (rx + cell_w//2, ry + cell_h), # Nose pointing down
-                        (rx, ry), # Wing left
-                        (rx + cell_w//2, ry + 8), # Center groove
-                        (rx + cell_w, ry) # Wing right
-                    ]
-                    pygame.draw.polygon(screen, ship_color, points)
-                    pygame.draw.polygon(screen, COLOR_WHITE, points, 1)
-                elif is_bullet:
-                    # Player bullet fires down (Green plasma ball)
-                    pygame.draw.circle(screen, COLOR_GREEN, (rx + cell_w//2, ry + cell_h//2), 6)
-                elif is_ebullet:
-                    # Enemy bullet fires up (Red laser beam)
-                    pygame.draw.line(screen, COLOR_RED, (rx + cell_w//2, ry), (rx + cell_w//2, ry + cell_h), 4)
-                elif cell == "▲":
-                    # Red enemy ship
-                    pygame.draw.ellipse(screen, COLOR_RED, (rx + 2, ry + 4, cell_w - 4, cell_h - 8))
-                    pygame.draw.circle(screen, COLOR_YELLOW, (rx + cell_w//2, ry + cell_h//2), 4)
-                elif cell == "G":
-                    pts = [
-                        (rx + cell_w//2, ry),
-                        (rx + cell_w, ry + cell_h//2),
-                        (rx + cell_w//2, ry + cell_h),
-                        (rx, ry + cell_h//2)
-                    ]
-                    pygame.draw.polygon(screen, COLOR_GREEN, pts)
-                elif cell == "H":
-                    pygame.draw.circle(screen, COLOR_RED, (rx + cell_w//4, ry + cell_h//3), cell_w//4)
-                    pygame.draw.circle(screen, COLOR_RED, (rx + 3 * cell_w//4, ry + cell_h//3), cell_w//4)
-                    pts = [
-                        (rx, ry + cell_h//3 + 2),
-                        (rx + cell_w//2, ry + cell_h),
-                        (rx + cell_w, ry + cell_h//3 + 2)
-                    ]
-                    pygame.draw.polygon(screen, COLOR_RED, pts)
-                elif cell == "S":
-                    pygame.draw.circle(screen, COLOR_BLUE, (rx + cell_w//2, ry + cell_h//2), cell_w//2 - 2, 2)
-                    pygame.draw.circle(screen, COLOR_CYAN, (rx + cell_w//2, ry + cell_h//2), 6)
-                elif cell == ".":
-                    pygame.draw.circle(screen, COLOR_GREY, (rx + cell_w//2, ry + cell_h//2), 3)
-                elif cell == "═":
-                    pygame.draw.rect(screen, COLOR_YELLOW, (rx, ry + cell_h//3, cell_w, cell_h//3))
-                elif cell != " ":
-                    pygame.draw.rect(screen, (80, 50, 40), (rx + 1, ry + 1, cell_w - 2, cell_h - 2))
-                    pygame.draw.rect(screen, (150, 110, 80), (rx + 3, ry + 3, cell_w - 6, cell_h - 6), 1)
-
-        # Render particles
-        active_parts = []
-        for p in particles:
-            p[0] += p[2]
-            p[1] += p[3]
-            p[6] -= 1
-            if p[6] > 0:
-                pygame.draw.circle(screen, p[4], (int(p[0]), int(p[1])), p[5])
-                active_parts.append(p)
-        particles = active_parts
-
-        # Draw HUD interface
-        pygame.draw.rect(screen, (15, 15, 30), (0, 0, WIDTH, 80))
-        pygame.draw.line(screen, COLOR_CYAN, (0, 80), (WIDTH, 80), 2)
-
-        # Lives Bar
-        draw_text("Lives: ", font_med, COLOR_WHITE, 50, 25)
-        for heart_i in range(lives):
-            pygame.draw.circle(screen, COLOR_RED, (110 + heart_i * 22, 20), 8)
-            pygame.draw.circle(screen, COLOR_RED, (120 + heart_i * 22, 20), 8)
-            pygame.draw.polygon(screen, COLOR_RED, [(101 + heart_i * 22, 21), (115 + heart_i * 22, 34), (129 + heart_i * 22, 21)])
-
-        # Shield Bar
-        draw_text("Shields: ", font_med, COLOR_WHITE, 50, 55)
-        for s_i in range(special_shields):
-            pygame.draw.circle(screen, COLOR_CYAN, (115 + s_i * 22, 55), 8, 2)
-            pygame.draw.circle(screen, COLOR_CYAN, (115 + s_i * 22, 55), 4)
-
-        # Stats Texts
-        draw_text(f"Score: {score}", font_med, COLOR_GREEN, 400, 25, center=False)
-        draw_text(f"Level: {level}", font_med, COLOR_WHITE, 400, 50, center=False)
-        if settings_gmode == 1:
-            draw_text(f"Laser Ammo: {bullets_left}", font_small, COLOR_YELLOW, 220, 50)
-
-        pygame.display.flip()
-
-        clock.tick(current_fps)
-
-def main_menu():
-    global settings_gmode, settings_difficulty, settings_sym_idx, settings_mute
-    sel = 1
-    total_opts = 7
-
-    font_title = pygame.font.Font(None, 64)
-    font_med = pygame.font.Font(None, 36)
-    font_small = pygame.font.Font(None, 24)
-
-    while True:
-        draw_starry_bg(0.8)
-
-        draw_text("GEMS AND METEORS", font_title, COLOR_CYAN, WIDTH//2, 120)
-        draw_text("GRAPHICAL EDITION", font_med, COLOR_WHITE, WIDTH//2, 180)
-
-        mode_str = "Levels Mode" if settings_gmode == 1 else "Endless Mode"
-        mute_str = "Sound OFF (Muted)" if settings_mute else "Sound ON"
-
-        options = [
-            "Start GaM",
-            f"Game Mode: {mode_str}",
-            f"Difficulty: {settings_difficulty}",
-            f"Sound: {mute_str}",
-            "High Scores",
-            "Controls & Help",
-            "Quit"
-        ]
-
-        for i, opt in enumerate(options, 1):
-            color = COLOR_GREEN if i == sel else COLOR_WHITE
-            prefix = " ► " if i == sel else "   "
-            draw_text(f"{prefix}{opt}", font_med, color, WIDTH//2, 280 + i * 55)
-
-        draw_text("Use UP/DOWN Arrows to Select, SPACE/ENTER to Confirm", font_small, COLOR_GREY, WIDTH//2, 750)
-
-        pygame.display.flip()
-
-        while True:
-            event = pygame.event.wait()
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
-                    sel = sel - 1 if sel > 1 else total_opts
-                    break
-                elif event.key == pygame.K_DOWN:
-                    sel = sel + 1 if sel < total_opts else 1
-                    break
-                elif event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
-                    if sel == 1:
-                        run_game()
-                        break
-                    elif sel == 2:
-                        settings_gmode = 1 - settings_gmode
-                        break
-                    elif sel == 3:
-                        settings_difficulty = settings_difficulty + 1 if settings_difficulty < 4 else 1
-                        break
-                    elif sel == 4:
-                        settings_mute = not settings_mute
-                        break
-                    elif sel == 5:
-                        show_high_scores()
-                        break
-                    elif sel == 6:
-                        show_help()
-                        break
-                    elif sel == 7:
-                        pygame.quit()
-                        sys.exit()
-
-def show_help():
-    font_title = pygame.font.Font(None, 48)
-    font_med = pygame.font.Font(None, 32)
-    font_small = pygame.font.Font(None, 24)
-
-    while True:
-        draw_starry_bg(0.3)
-        pygame.draw.rect(screen, (15, 15, 30, 210), (50, 100, 500, 600))
-        draw_text("CONTROLS & HELP", font_title, COLOR_YELLOW, WIDTH//2, 150)
-
-        instructions = [
+        help_lines = [
             "A / LEFT Arrow    : Move Left",
             "D / RIGHT Arrow   : Move Right",
-            "SPACE / ENTER     : Fire Laser Beam (Downwards)",
-            "ESC               : Pause / In-game settings",
+            "SPACE / ENTER     : Fire Laser (Downwards)",
+            "ESC               : Pause Settings",
             "",
             "Objective:",
             "- Shoot/dodge enemies coming from the bottom",
-            "- Collect Gems, Hearts, and gun-reloading Shields",
+            "- Collect Gems, Hearts, and gun Shields",
             "- Avoid meteor clusters and projectile bullets",
             "- Land in the middle column on the yellow Landing",
             "  Strip at the bottom to save your progress!"
         ]
 
-        for i, line in enumerate(instructions):
-            draw_text(line, font_small, COLOR_WHITE, 80, 240 + i * 32, center=False)
+        for i, line in enumerate(help_lines):
+            self.canvas.create_text(100, 180 + i * 35, text=line, font=("Courier New", 14), fill=COLOR_WHITE, anchor="w")
 
-        draw_text("[Press any key to return to main menu]", font_small, COLOR_GREEN, WIDTH//2, 650)
-        pygame.display.flip()
+        self.create_menu_button("Return to Menu", 680, self.show_main_menu)
+        self.menu_running = True
+        self.animate_menu()
 
-        event = pygame.event.wait()
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            sys.exit()
-        elif event.type == pygame.KEYDOWN:
+    def start_game(self):
+        self.clear_screen()
+
+        # Setup Grid Mapping based on difficulty
+        self.cols = 13 if difficulty == 1 else (11 if difficulty == 2 else (9 if difficulty == 3 else 7))
+        self.cell_w = 400 // self.cols
+        self.cell_h = 32
+        self.map_x_offset = (600 - 400) // 2
+
+        self.map_rows = [[" " for _ in range(self.cols)] for _ in range(22)]
+        self.player_col = self.cols // 2
+        self.player_row = 3
+
+        # Game statistics
+        self.game_score = 0
+        self.gems_count = 0
+        self.lives = 3
+        self.special_shields = 0
+        self.bullets_left = 10
+        self.game_level = 1
+        self.damage_taken = 0
+
+        self.player_bullets = []
+        self.enemy_bullets = []
+
+        self.level_goal_row = 150
+        self.level_scroll_count = 0
+
+        # Delay mapping (ms)
+        speed_delays = {1: 150, 2: 80, 3: 40, 4: 20}
+        self.tick_delay = speed_delays[difficulty]
+
+        # Particles list
+        self.particles = []
+
+        # Create interactive canvas
+        self.game_canvas = tk.Canvas(self, width=600, height=800, bg=COLOR_BG, highlightthickness=0)
+        self.game_canvas.pack(fill="both", expand=True)
+
+        self.bind_keys()
+        self.game_paused = False
+        self.game_over = False
+
+        self.game_tick()
+
+    def bind_keys(self):
+        self.bind_all("<Key>", self.handle_keydown)
+
+    def handle_keydown(self, event):
+        if self.game_over:
             return
 
-def show_high_scores():
-    load_scores()
-    font_title = pygame.font.Font(None, 48)
-    font_med = pygame.font.Font(None, 32)
-    font_small = pygame.font.Font(None, 24)
+        key = event.keysym.lower()
+        if key == "escape":
+            self.game_paused = not self.game_paused
+            if self.game_paused:
+                self.show_pause_overlay()
+            else:
+                self.game_canvas.delete("pause_ov")
+                self.game_tick()
+        elif not self.game_paused:
+            if key in ("left", "a"):
+                if self.player_col > 0:
+                    self.player_col -= 1
+            elif key in ("right", "d"):
+                if self.player_col < self.cols - 1:
+                    self.player_col += 1
+            elif key in ("space", "return"):
+                # Fire Laser downwards in Levels mode
+                if gmode == 1:
+                    if self.bullets_left > 0:
+                        self.bullets_left -= 1
+                        self.player_bullets.append([self.player_col, self.player_row + 1])
+                        play_sfx("damage.wav")
+                    elif self.special_shields > 0:
+                        self.special_shields -= 1
+                        self.bullets_left = 9
+                        self.player_bullets.append([self.player_col, self.player_row + 1])
+                        play_sfx("boom.wav")
+                else:
+                    # Endless clear explosion
+                    if self.special_shields > 0:
+                        self.special_shields -= 1
+                        play_sfx("boom.wav")
+                        for r in range(len(self.map_rows)):
+                            for c in range(self.cols):
+                                if self.map_rows[r][c] not in (" ", "G", "H", "S"):
+                                    self.map_rows[r][c] = "."
 
-    while True:
-        draw_starry_bg(0.3)
-        pygame.draw.rect(screen, (15, 15, 30, 210), (50, 100, 500, 600))
-        draw_text("LOCAL LEADERBOARD", font_title, COLOR_YELLOW, WIDTH//2, 150)
+    def show_pause_overlay(self):
+        self.game_canvas.create_rectangle(100, 200, 500, 550, fill="#141428", outline=COLOR_CYAN, width=2, tags="pause_ov")
+        self.game_canvas.create_text(300, 250, text="GAME PAUSED", font=("Courier New", 24, "bold"), fill=COLOR_RED, tags="pause_ov")
 
-        headers = f"{'Rank':<6}{'Name':<10}{'Score':<12}{'Level':<8}{'Diff':<8}"
-        draw_text(headers, font_med, COLOR_CYAN, 80, 220, center=False)
-        pygame.draw.line(screen, COLOR_CYAN, (80, 250), (520, 250), 2)
+        self.game_canvas.create_text(300, 320, text="[ESC] Resume Game", font=("Courier New", 14), fill=COLOR_WHITE, tags="pause_ov")
+        self.game_canvas.create_text(300, 380, text=f"[S] Sound Setting: {'OFF' if settings_mute else 'ON'}", font=("Courier New", 14), fill=COLOR_WHITE, tags="pause_ov")
+        self.game_canvas.create_text(300, 440, text="[Q] Quit to Menu", font=("Courier New", 14), fill=COLOR_WHITE, tags="pause_ov")
 
-        for idx, s in enumerate(local_scores[:10]):
-            line = f"#{idx+1:<5}{s['name']:<10}{s['fs']:<12}{s['level']:<8}{s['difficulty']:<8}"
-            draw_text(line, font_med, COLOR_WHITE, 80, 270 + idx * 35, center=False)
+        # Listen to pause commands directly
+        def pause_input(event):
+            key = event.keysym.lower()
+            if key == "s":
+                global settings_mute
+                settings_mute = not settings_mute
+                self.show_pause_overlay()
+            elif key == "q":
+                self.unbind_all("<Key>")
+                self.show_main_menu()
 
-        draw_text("[Press any key to return to main menu]", font_small, COLOR_GREEN, WIDTH//2, 650)
-        pygame.display.flip()
+        self.bind_all("<Key>", pause_input)
 
-        event = pygame.event.wait()
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            sys.exit()
-        elif event.type == pygame.KEYDOWN:
+    def add_explosion(self, x, y, color):
+        for _ in range(12):
+            self.particles.append([
+                x, y,
+                random.uniform(-4, 4), random.uniform(-4, 4),
+                color,
+                random.randint(2, 5),
+                15
+            ])
+
+    def game_tick(self):
+        if self.game_paused or self.game_over:
             return
+
+        self.level_scroll_count += 1
+        self.game_score += 1
+
+        # Dynamic delay decrease
+        if self.game_score % 200 == 0:
+            min_delay = 50 if difficulty == 1 else (25 if difficulty == 2 else (12 if difficulty == 3 else 5))
+            if self.tick_delay > min_delay:
+                self.tick_delay = max(min_delay, self.tick_delay - 2)
+
+        # Scroll Map downwards
+        self.map_rows.pop(0)
+        new_row = [" " for _ in range(self.cols)]
+
+        if gmode == 1:
+            if self.level_scroll_count == self.level_goal_row:
+                for c in range(self.cols):
+                    new_row[c] = "═"
+                new_row[self.cols // 2] = " "
+            elif self.level_scroll_count > self.level_goal_row - 10 and self.level_scroll_count <= self.level_goal_row + 5:
+                pass
+            else:
+                for c in range(self.cols):
+                    num = random.randint(0, 999)
+                    if num < 8: new_row[c] = "S" # Shield
+                    elif num >= 100 and num <= 108: new_row[c] = "H" # Heart
+                    elif num >= 200 and num <= 215: new_row[c] = "G" # Gem
+                    elif num >= 50 and num <= 60 + difficulty * 10:
+                        new_row[c] = "M" # Meteor
+        else:
+            for c in range(self.cols):
+                num = random.randint(0, 999)
+                if num < 8: new_row[c] = "S"
+                elif num >= 100 and num <= 108: new_row[c] = "H"
+                elif num >= 200 and num <= 215: new_row[c] = "G"
+                elif num >= 50 and num <= 60 + difficulty * 10:
+                    new_row[c] = "M"
+
+        self.map_rows.append(new_row)
+
+        # Level mode landing strip reaching check
+        if gmode == 1 and self.level_scroll_count >= self.level_goal_row:
+            if self.player_row == len(self.map_rows) - 4 or self.level_scroll_count == self.level_goal_row + 5:
+                if self.player_col == self.cols // 2:
+                    # Successfully completed level!
+                    play_sfx("heart.wav")
+                    self.game_score += self.game_level * 500
+                    self.game_level += 1
+                    self.level_scroll_count = 0
+                    self.map_rows = [[" " for _ in range(self.cols)] for _ in range(22)]
+                    self.player_bullets = []
+                    self.enemy_bullets = []
+                    self.bullets_left = 10
+                else:
+                    self.lives -= 1
+                    self.damage_taken += 1
+                    play_sfx("damage.wav")
+                    self.level_scroll_count = self.level_goal_row - 12
+
+        # Update Player Lasers (moving DOWN screen, +y relative)
+        active_pbullets = []
+        for b in self.player_bullets:
+            bc, br = b
+            hit = False
+            for step in range(3):
+                test_r = br + step
+                if test_r < len(self.map_rows):
+                    cell = self.map_rows[test_r][bc]
+                    if cell != " " and cell != "▲" and cell != "•" and cell != "↑":
+                        hit = True
+                        self.map_rows[test_r][bc] = " "
+                        cx = self.map_x_offset + bc * self.cell_w + self.cell_w//2
+                        cy = test_r * self.cell_h + self.cell_h//2
+                        if cell == "G":
+                            self.gems_count += 1
+                            self.game_score += 5 * difficulty + 5
+                            play_sfx("gem.wav")
+                            self.add_explosion(cx, cy, COLOR_GREEN)
+                        elif cell == "H":
+                            self.lives = min(10, self.lives + 1)
+                            play_sfx("heart.wav")
+                            self.add_explosion(cx, cy, COLOR_RED)
+                        elif cell == "S":
+                            self.special_shields = min(5, self.special_shields + 1)
+                            play_sfx("boom.wav")
+                            self.add_explosion(cx, cy, COLOR_CYAN)
+                        else:
+                            self.map_rows[test_r][bc] = "."
+                            play_sfx("damage.wav")
+                            self.add_explosion(cx, cy, COLOR_GREY)
+                        break
+                    elif cell == "▲":
+                        hit = True
+                        self.map_rows[test_r][bc] = " "
+                        self.game_score += 1000
+                        play_sfx("boom.wav")
+                        self.add_explosion(self.map_x_offset + bc * self.cell_w + self.cell_w//2, test_r * self.cell_h + self.cell_h//2, COLOR_YELLOW)
+                        break
+            if not hit:
+                new_br = br + 3
+                if new_br < len(self.map_rows):
+                    active_pbullets.append([bc, new_br])
+        self.player_bullets = active_pbullets
+
+        # Update Enemy Lasers (moving UP screen, -y relative)
+        active_ebullets = []
+        for eb in self.enemy_bullets:
+            ebc, ebr = eb
+            hit = False
+            for step in range(2):
+                test_r = ebr - step
+                if test_r >= 0:
+                    if test_r == self.player_row and ebc == self.player_col:
+                        hit = True
+                        self.lives -= 1
+                        self.damage_taken += 1
+                        play_sfx("damage.wav")
+                        self.add_explosion(self.map_x_offset + self.player_col * self.cell_w + self.cell_w//2, self.player_row * self.cell_h + self.cell_h//2, COLOR_RED)
+                        break
+            if not hit:
+                new_ebr = ebr - 2
+                if new_ebr >= 0:
+                    active_ebullets.append([ebc, new_ebr])
+        self.enemy_bullets = active_ebullets
+
+        # Update Enemies on map
+        if gmode == 1:
+            for r in range(len(self.map_rows) - 1, -1, -1):
+                for c in range(self.cols):
+                    if self.map_rows[r][c] == "▲":
+                        self.map_rows[r][c] = " "
+                        move = random.choice([-1, 0, 1])
+                        new_c = max(0, min(self.cols - 1, c + move))
+                        if random.randint(0, 5) == 0:
+                            self.enemy_bullets.append([new_c, r - 1])
+                        if r < len(self.map_rows):
+                            self.map_rows[r][new_c] = "▲"
+
+            if self.level_scroll_count % 15 == 0 and self.level_scroll_count < self.level_goal_row - 10:
+                spawn_c = random.randint(0, self.cols - 1)
+                if self.map_rows[len(self.map_rows) - 1][spawn_c] == " ":
+                    self.map_rows[len(self.map_rows) - 1][spawn_c] = "▲"
+
+        # Direct player collisions
+        player_cell = self.map_rows[self.player_row][self.player_col]
+        if player_cell != " ":
+            self.map_rows[self.player_row][self.player_col] = " "
+            cx = self.map_x_offset + self.player_col * self.cell_w + self.cell_w//2
+            cy = self.player_row * self.cell_h + self.cell_h//2
+            if player_cell == "G":
+                self.gems_count += 1
+                self.game_score += 5 * difficulty + 5
+                play_sfx("gem.wav")
+                self.add_explosion(cx, cy, COLOR_GREEN)
+            elif player_cell == "H":
+                self.lives = min(10, self.lives + 1)
+                play_sfx("heart.wav")
+                self.add_explosion(cx, cy, COLOR_RED)
+            elif player_cell == "S":
+                self.special_shields = min(5, self.special_shields + 1)
+                play_sfx("boom.wav")
+                self.add_explosion(cx, cy, COLOR_CYAN)
+            elif player_cell in ("▲", "•", "↑"):
+                self.lives -= 1
+                self.damage_taken += 1
+                play_sfx("damage.wav")
+                self.add_explosion(cx, cy, COLOR_RED)
+            else:
+                self.damage_taken += 1
+                play_sfx("damage.wav")
+                self.add_explosion(cx, cy, COLOR_GREY)
+                if self.special_shields > 0:
+                    self.special_shields -= 1
+                    self.lives -= 1
+                else:
+                    self.lives -= 3
+
+        if self.lives <= 0:
+            self.game_over = True
+            self.show_game_over_screen()
+            return
+
+        self.render_game_frame()
+
+        self.after(self.tick_delay, self.game_tick)
+
+    def render_game_frame(self):
+        self.game_canvas.delete("all")
+
+        # Draw Star background
+        for s in self.stars:
+            s[1] += s[2] * 0.5
+            if s[1] > 800:
+                s[1] = 0
+                s[0] = random.randint(0, 600)
+            col = int(s[2] * 70)
+            rgb = f"#{col:02x}{col:02x}{min(255, col+30):02x}"
+            sz = int(s[2])
+            self.game_canvas.create_oval(s[0], s[1], s[0]+sz, s[1]+sz, fill=rgb, outline="")
+
+        # Draw Borders
+        self.game_canvas.create_line(self.map_x_offset, 0, self.map_x_offset, 800, fill=COLOR_WHITE, width=2)
+        self.game_canvas.create_line(self.map_x_offset + self.cols * self.cell_w, 0, self.map_x_offset + self.cols * self.cell_w, 800, fill=COLOR_WHITE, width=2)
+
+        # Draw Map Elements
+        for r in range(len(self.map_rows)):
+            for c in range(self.cols):
+                cell = self.map_rows[r][c]
+                rx = self.map_x_offset + c * self.cell_w
+                ry = r * self.cell_h
+
+                is_bullet = any(b[0] == c and b[1] == r for b in self.player_bullets)
+                is_ebullet = any(eb[0] == c and eb[1] == r for eb in self.enemy_bullets)
+
+                if r == self.player_row and c == self.player_col:
+                    # Beautiful cyan ship triangle pointing down
+                    self.game_canvas.create_polygon(
+                        rx + self.cell_w//2, ry + self.cell_h,
+                        rx, ry,
+                        rx + self.cell_w//2, ry + 8,
+                        rx + self.cell_w, ry,
+                        fill=COLOR_CYAN, outline=COLOR_WHITE
+                    )
+                elif is_bullet:
+                    # Player bullet fires down screen (Green plasma circle)
+                    self.game_canvas.create_oval(rx + self.cell_w//2 - 6, ry + self.cell_h//2 - 6, rx + self.cell_w//2 + 6, ry + self.cell_h//2 + 6, fill=COLOR_GREEN, outline="")
+                elif is_ebullet:
+                    # Enemy bullet fires up screen (Red laser beam)
+                    self.game_canvas.create_line(rx + self.cell_w//2, ry, rx + self.cell_w//2, ry + self.cell_h, fill=COLOR_RED, width=4)
+                elif cell == "▲":
+                    # Red oval enemy ship
+                    self.game_canvas.create_oval(rx + 2, ry + 4, rx + self.cell_w - 2, ry + self.cell_h - 4, fill=COLOR_RED, outline="")
+                    self.game_canvas.create_oval(rx + self.cell_w//2 - 4, ry + self.cell_h//2 - 4, rx + self.cell_w//2 + 4, ry + self.cell_h//2 + 4, fill=COLOR_YELLOW, outline="")
+                elif cell == "G":
+                    # Gem diamond
+                    self.game_canvas.create_polygon(
+                        rx + self.cell_w//2, ry,
+                        rx + self.cell_w, ry + self.cell_h//2,
+                        rx + self.cell_w//2, ry + self.cell_h,
+                        rx, ry + self.cell_h//2,
+                        fill=COLOR_GREEN, outline=""
+                    )
+                elif cell == "H":
+                    # Heart circle
+                    self.game_canvas.create_oval(rx + 2, ry + 2, rx + self.cell_w - 2, ry + self.cell_h - 2, fill=COLOR_RED, outline="")
+                elif cell == "S":
+                    # Shield circle
+                    self.game_canvas.create_oval(rx + 2, ry + 2, rx + self.cell_w - 2, ry + self.cell_h - 2, outline=COLOR_BLUE, width=2)
+                    self.game_canvas.create_oval(rx + self.cell_w//2 - 4, ry + self.cell_h//2 - 4, rx + self.cell_w//2 + 4, ry + self.cell_h//2 + 4, fill=COLOR_CYAN, outline="")
+                elif cell == ".":
+                    self.game_canvas.create_oval(rx + self.cell_w//2 - 2, ry + self.cell_h//2 - 2, rx + self.cell_w//2 + 2, ry + self.cell_h//2 + 2, fill=COLOR_GREY, outline="")
+                elif cell == "═":
+                    self.game_canvas.create_rectangle(rx, ry + self.cell_h//3, rx + self.cell_w, ry + 2*self.cell_h//3, fill=COLOR_YELLOW, outline="")
+                elif cell != " ":
+                    # Meteor brown block
+                    self.game_canvas.create_rectangle(rx + 2, ry + 2, rx + self.cell_w - 2, ry + self.cell_h - 2, fill="#503228", outline="#966E50")
+
+        # Update and Render Particles
+        active_parts = []
+        for p in self.particles:
+            p[0] += p[2]
+            p[1] += p[3]
+            p[6] -= 1
+            if p[6] > 0:
+                self.game_canvas.create_oval(p[0] - p[5], p[1] - p[5], p[0] + p[5], p[1] + p[5], fill=p[4], outline="")
+                active_parts.append(p)
+        self.particles = active_parts
+
+        # Draw HUD interface at top
+        self.game_canvas.create_rectangle(0, 0, 600, 80, fill="#0F0F1E", outline=COLOR_CYAN, width=2)
+
+        # Lives text
+        self.game_canvas.create_text(80, 25, text=f"Lives: {self.lives}/10", font=("Courier New", 14, "bold"), fill=COLOR_RED, anchor="w")
+        # Shields text
+        self.game_canvas.create_text(80, 55, text=f"Shields: {self.special_shields}/5", font=("Courier New", 14, "bold"), fill=COLOR_CYAN, anchor="w")
+
+        # Scores text
+        self.game_canvas.create_text(350, 25, text=f"Score: {self.game_score}", font=("Courier New", 14, "bold"), fill=COLOR_GREEN, anchor="w")
+        self.game_canvas.create_text(350, 55, text=f"Level: {self.game_level}", font=("Courier New", 14, "bold"), fill=COLOR_WHITE, anchor="w")
+
+        if gmode == 1:
+            self.game_canvas.create_text(220, 55, text=f"Ammo: {self.bullets_left}", font=("Courier New", 12, "bold"), fill=COLOR_YELLOW)
+
+    def show_game_over_screen(self):
+        self.unbind_all("<Key>")
+        self.game_canvas.delete("all")
+
+        # Background
+        self.game_canvas.create_text(300, 200, text="GAME OVER", font=("Courier New", 36, "bold"), fill=COLOR_RED)
+
+        lvl_bonus = self.game_level * 10 * difficulty
+        final_fs = self.game_score + lvl_bonus
+
+        self.game_canvas.create_text(300, 280, text=f"Score: {self.game_score}", font=("Courier New", 18), fill=COLOR_WHITE)
+        self.game_canvas.create_text(300, 330, text=f"Level Bonus: +{lvl_bonus}", font=("Courier New", 18), fill=COLOR_WHITE)
+        self.game_canvas.create_text(300, 390, text=f"FINAL SCORE: {final_fs}", font=("Courier New", 24, "bold"), fill=COLOR_GREEN)
+
+        self.game_canvas.create_text(300, 460, text="Enter your initials (3 Letters):", font=("Courier New", 14, "bold"), fill=COLOR_YELLOW)
+
+        # We create an entry widget for initials typing
+        entry = tk.Entry(self, font=("Courier New", 24, "bold"), width=5, justify="center")
+        self.game_canvas.create_window(300, 520, window=entry)
+        entry.focus_set()
+
+        def save_and_return():
+            name = entry.get().strip().upper()
+            if len(name) != 3:
+                messagebox.showwarning("Initials", "Please enter exactly 3 letters!")
+                return
+            save_local_score(name, final_fs, self.game_score, lvl_bonus, self.game_level, difficulty, self.gems_count, self.damage_taken)
+            self.show_main_menu()
+
+        # Save Button
+        save_btn = tk.Button(self, text="Save Score", font=("Courier New", 14, "bold"), command=save_and_return)
+        self.game_canvas.create_window(300, 600, window=save_btn)
 
 if __name__ == "__main__":
-    main_menu()
+    app = GameApp()
+    app.mainloop()

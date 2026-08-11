@@ -24,6 +24,10 @@ EMBEDDED_ASSETS = {
 }
 
 
+# Resize terminal window at startup (Windows only)
+if os.name == 'nt':
+    os.system("mode con cols=43 lines=20")
+
 # Enable Windows virtual terminal (ANSI color support)
 if os.name == 'nt':
     kernel32 = ctypes.windll.kernel32
@@ -32,7 +36,7 @@ if os.name == 'nt':
     kernel32.GetConsoleMode(hStdOut, ctypes.byref(mode))
     kernel32.SetConsoleMode(hStdOut, mode.value | 0x0004)
 
-# Keyboard input for Windows / POSIX
+# Keyboard input for Windows / POSIX supporting arrow keys and WASD
 try:
     import msvcrt
     def get_key_pressed():
@@ -40,8 +44,15 @@ try:
             ch = msvcrt.getch()
             if ch in (b'\x00', b'\xe0'): # arrow keys
                 ch2 = msvcrt.getch()
-                return f"arrow_{ch2}"
-            return ch.decode('utf-8', errors='ignore')
+                try:
+                    s2 = ch2.decode('utf-8', errors='ignore')
+                except Exception:
+                    s2 = str(ch2)
+                return f"arrow_{s2}"
+            try:
+                return ch.decode('utf-8', errors='ignore').lower()
+            except Exception:
+                return None
         return None
 except ImportError:
     # Minimal POSIX key press (non-blocking)
@@ -57,12 +68,11 @@ except ImportError:
             if rlist:
                 ch = sys.stdin.read(1)
                 if ch == '\x1b': # escape sequence
-                    # read more if arrow key
                     rlist2, _, _ = select.select([sys.stdin], [], [], 0.05)
                     if rlist2:
                         ch2 = sys.stdin.read(2)
                         return f"arrow_{ch2}"
-                return ch
+                return ch.lower()
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         return None
@@ -116,10 +126,8 @@ def stop_bg_music():
     except Exception:
         pass
 
-# Symbols
-SYM_OPTIONS = ["🛸", "▼", "v", "∇", "⛛", "⧩"]
-sym_idx = 0
-char_down = SYM_OPTIONS[sym_idx]
+# Symbols (Default spaceship to ▼ to ensure standard fonts support it completely)
+char_down = "▼"
 char_gem = "♦"
 char_heart = "♥"
 char_sun = "☼"
@@ -171,19 +179,17 @@ def save_local_score(name, fs, score_val, bonus, lvl, diff, gms, dmg):
         pass
 
 def draw_header_title():
-    title = f"""
-  {C_CYAN}██████  ███████ ███    ███ ███████     ██████  ██████  ███████ 
- ██       ██      ████  ████ ██         ██       ██   ██ ██      
- ██ █████ █████   ██ ████ ██ ███████    ██      ██████  █████ 
- ██    ██ ██      ██  ██  ██      ██    ██      ██   ██ ██    
-  ██████  ███████ ██      ██ ███████     ██████ ██   ██ ███████ {C_RESET}
-    """
-    print(title)
+    # A beautiful centered retro title exactly matching Batch aesthetics
+    print(f"{C_GREEN} _______________________________________ {C_RESET}")
+    print(f"{C_GREEN}│                                       │{C_RESET}")
+    print(f"{C_GREEN}│          {C_BOLD}{C_CYAN} GEMS AND METEORS {C_RESET}{C_GREEN}           │{C_RESET}")
+    print(f"{C_GREEN}│             Python Edition            │{C_RESET}")
+    print(f"{C_GREEN}│_______________________________________│{C_RESET}")
 
 def main_menu():
-    global gmode, sym_idx, char_down, difficulty, MUTE
+    global gmode, char_down, difficulty, MUTE
     sel = 1
-    total_options = 8
+    total_options = 7
 
     while True:
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -193,24 +199,24 @@ def main_menu():
         mute_str = "Muted" if MUTE else "Sound ON"
 
         options = [
-            f"Start Game",
+            "Start Game",
             f"Game Mode: {mode_str}",
-            f"Spaceship Symbol: {SYM_OPTIONS[sym_idx]}",
             f"Difficulty: {difficulty}",
-            f"Sound Setting: {mute_str}",
-            f"High Scores",
-            f"How to Play & Controls",
-            f"Quit Game"
+            f"Sound: {mute_str}",
+            "High Scores",
+            "Controls & Help",
+            "Quit Game"
         ]
 
-        print(f"\n{C_BOLD}{C_YELLOW}===== MAIN MENU ====={C_RESET}\n")
+        print(f"\n{C_BOLD}{C_YELLOW}  ===== MAIN MENU ====={C_RESET}\n")
         for i, opt in enumerate(options, 1):
-            cursor = f"{C_GREEN}  ► {C_RESET}" if i == sel else "    "
-            # Highlighting select
+            cursor = f"{C_GREEN} ► {C_RESET}" if i == sel else "   "
             text_color = C_BOLD + C_WHITE if i == sel else C_WHITE
-            print(f"{cursor}{text_color}{opt}{C_RESET}")
+            # Align perfectly centered on 43 cols
+            aligned_opt = f"  {cursor}{text_color}{opt:<28}{C_RESET}"
+            print(aligned_opt)
 
-        print(f"\n{C_CYAN}[Arrows: Move, Enter/Space: Select]{C_RESET}")
+        print(f"\n{C_CYAN}  [Arrows/WASD: Move, Space/Enter: Confirm]{C_RESET}")
 
         # Input loop
         while True:
@@ -219,55 +225,50 @@ def main_menu():
                 break
             time.sleep(0.05)
 
-        if key in ("arrow_H", "w", "arrow_up", "arrow_A"): # Up
+        # Map WASD / Arrow keys correctly
+        if key in ("arrow_H", "w", "arrow_up", "arrow_A", "a_up"):
             sel = sel - 1 if sel > 1 else total_options
-        elif key in ("arrow_P", "s", "arrow_down", "arrow_B"): # Down
+        elif key in ("arrow_P", "s", "arrow_down", "arrow_B", "a_down"):
             sel = sel + 1 if sel < total_options else 1
-        elif key in ("\r", " ", "\n"): # Enter or Space
+        elif key in ("\r", " ", "\n"):
             if sel == 1:
                 run_game()
             elif sel == 2:
                 gmode = 1 - gmode
             elif sel == 3:
-                sym_idx = (sym_idx + 1) % len(SYM_OPTIONS)
-                char_down = SYM_OPTIONS[sym_idx]
-            elif sel == 4:
                 difficulty = difficulty + 1 if difficulty < 4 else 1
-            elif sel == 5:
+            elif sel == 4:
                 MUTE = not MUTE
                 if MUTE:
                     stop_bg_music()
                 else:
                     start_bg_music()
-            elif sel == 6:
+            elif sel == 5:
                 show_high_scores()
-            elif sel == 7:
+            elif sel == 6:
                 show_controls()
-            elif sel == 8:
+            elif sel == 7:
                 stop_bg_music()
                 sys.exit(0)
 
 def show_controls():
     os.system('cls' if os.name == 'nt' else 'clear')
-    print(f"\n{C_BOLD}{C_YELLOW}===== CONTROLS & OBJECTIVES ====={C_RESET}\n")
-    print(f"{C_BOLD}Movement:{C_RESET}")
-    print(f"  ◄ Left Arrow / A  : Move Left")
-    print(f"  ► Right Arrow / D : Move Right")
-    print(f"  ESC               : Pause / In-Game settings")
+    print(f"\n{C_BOLD}{C_YELLOW}  ===== CONTROLS & HELP ====={C_RESET}\n")
+    print(f"  {C_BOLD}Movement:{C_RESET}")
+    print(f"    ◄ Left Arrow / A  : Move Left")
+    print(f"    ► Right Arrow / D : Move Right")
+    print(f"    ESC               : Pause settings")
     print()
-    print(f"{C_BOLD}Combat (Levels Mode Only):{C_RESET}")
-    print(f"  Space / Enter     : Fire weapon downwards!")
-    print(f"  Consumes {C_CYAN}1 Shield ({char_sun}){C_RESET} per 10 shots to reload ammo.")
+    print(f"  {C_BOLD}Combat (Levels Mode Only):{C_RESET}")
+    print(f"    Space / Enter     : Fire weapon downwards!")
+    print(f"    Consumes {C_CYAN}1 Shield ({char_sun}){C_RESET} per 10 shots.")
     print()
-    print(f"{C_BOLD}Objectives:{C_RESET}")
-    print(f"  Gems ({C_GREEN}{char_gem}{C_RESET})       : +10 pts * difficulty")
-    print(f"  Hearts ({C_RED}{char_heart}{C_RESET})   : +1 Life (max 10)")
-    print(f"  Shields ({C_YELLOW}{char_sun}{C_RESET})  : Gun Ammo or damage protection!")
-    print(f"  Meteors (Block)   : Avoid! Colliding reduces lives.")
-    print()
-    print(f"  {C_BOLD}Endless Mode:{C_RESET} Survive as long as possible, speed increases over time.")
-    print(f"  {C_BOLD}Levels Mode:{C_RESET} Dodge/Shoot enemies, reach the landing strip at bottom to advance.")
-    print("\nPress any key to return to main menu...")
+    print(f"  {C_BOLD}Objectives:{C_RESET}")
+    print(f"    - Gems ({C_GREEN}{char_gem}{C_RESET})      : +Points")
+    print(f"    - Hearts ({C_RED}{char_heart}{C_RESET})  : +1 Life")
+    print(f"    - Shields ({C_CYAN}{char_sun}{C_RESET}) : Gun Ammo / protection")
+    print(f"    - Land on the Landing Strip at bottom!")
+    print("\n  Press any key to return...")
     while True:
         if get_key_pressed() is not None:
             break
@@ -276,12 +277,12 @@ def show_controls():
 def show_high_scores():
     load_scores()
     os.system('cls' if os.name == 'nt' else 'clear')
-    print(f"\n{C_BOLD}{C_YELLOW}===== LOCAL HIGH SCORES ====={C_RESET}\n")
-    print(f"{C_BOLD}{'Rank':<5}{'Name':<8}{'Score':<10}{'Lvl':<5}{'Diff':<5}{'Gems':<5}{'Dmg':<5}{C_RESET}")
-    print("-" * 50)
-    for idx, s in enumerate(local_scores[:10], 1):
-        print(f"{idx:<5}{s['name']:<8}{s['fs']:<10}{s['level']:<5}{s['difficulty']:<5}{s['gems']:<5}{s['damage']:<5}")
-    print("\nPress any key to return to main menu...")
+    print(f"\n{C_BOLD}{C_YELLOW}  ===== LEADERBOARD ====={C_RESET}\n")
+    print(f"  {C_BOLD}{'Name':<6}{'Score':<10}{'Lvl':<5}{'Diff':<5}{'Gems':<5}{C_RESET}")
+    print("  " + "-" * 32)
+    for idx, s in enumerate(local_scores[:8], 1):
+        print(f"  #{idx} {s['name']:<4} {s['fs']:<8} L{s['level']:<4} D{s['difficulty']:<4}")
+    print("\n  Press any key to return...")
     while True:
         if get_key_pressed() is not None:
             break
@@ -295,9 +296,9 @@ def pause_menu():
 
     while True:
         os.system('cls' if os.name == 'nt' else 'clear')
-        print(f"\n{C_BOLD}{C_RED}===== GAME PAUSED ====={C_RESET}\n")
+        print(f"\n{C_BOLD}{C_RED}  ===== GAME PAUSED ====={C_RESET}\n")
 
-        mute_str = "Sound OFF (Muted)" if MUTE else "Sound ON"
+        mute_str = "Muted" if MUTE else "Sound ON"
 
         options = [
             "Resume Game",
@@ -306,9 +307,9 @@ def pause_menu():
         ]
 
         for i, opt in enumerate(options, 1):
-            cursor = f"{C_GREEN}  ► {C_RESET}" if i == sel else "    "
+            cursor = f"{C_GREEN} ► {C_RESET}" if i == sel else "   "
             text_color = C_BOLD + C_WHITE if i == sel else C_WHITE
-            print(f"{cursor}{text_color}{opt}{C_RESET}")
+            print(f"  {cursor}{text_color}{opt:<28}{C_RESET}")
 
         while True:
             key = get_key_pressed()
@@ -316,27 +317,24 @@ def pause_menu():
                 break
             time.sleep(0.05)
 
-        if key in ("arrow_H", "w", "arrow_up", "arrow_A"):
+        if key in ("arrow_H", "w", "arrow_up", "arrow_A", "a_up"):
             sel = sel - 1 if sel > 1 else total_opts
-        elif key in ("arrow_P", "s", "arrow_down", "arrow_B"):
+        elif key in ("arrow_P", "s", "arrow_down", "arrow_B", "a_down"):
             sel = sel + 1 if sel < total_opts else 1
         elif key in ("\r", " ", "\n"):
             if sel == 1:
-                # Resume
                 start_bg_music()
                 return "resume"
             elif sel == 2:
                 MUTE = not MUTE
             elif sel == 3:
-                # Quit
                 return "quit"
-        elif key == "\x1b": # ESC resume
+        elif key == "\x1b":
             start_bg_music()
             return "resume"
 
 def run_game():
     global score, gems, lives, special, bullets_left, level, damage, char_down, difficulty
-    # Initialize game variables
     score = 0
     gems = 0
     lives = 3
@@ -346,23 +344,17 @@ def run_game():
     damage = 0
 
     cols = 13 if difficulty == 1 else (11 if difficulty == 2 else (9 if difficulty == 3 else 7))
-    view_height = 18
+    view_height = 14
 
-    # Generate initial viewport rows
-    # Play map is infinite. Each row is represented by a list of characters of width `cols`
     map_rows = [[" " for _ in range(cols)] for _ in range(view_height)]
 
-    # Player starts in the middle column, 3 rows from top
     player_col = cols // 2
-    player_row = 3
+    player_row = 2
 
-    # Dynamic delay/speed setting
-    # Difficulty starts: 1=100ms, 2=40ms, 3=10ms, 4=5ms
-    speed_delays = {1: 0.100, 2: 0.040, 3: 0.010, 4: 0.005}
+    # Playable, smooth speed settings (starting delays)
+    speed_delays = {1: 0.150, 2: 0.080, 3: 0.040, 4: 0.020}
     current_delay = speed_delays[difficulty]
 
-    # Entities tracking
-    # Bullets: list of [col, row]
     player_bullets = []
     enemy_bullets = []
 
@@ -372,44 +364,41 @@ def run_game():
     start_bg_music()
 
     tick_count = 0
-    flash_item_bg = None # To support flashy color matches
+    flash_item_bg = None
     flash_tick = 0
 
     while True:
         tick_count += 1
         level_scroll_count += 1
 
-        # Check dynamic difficulty speed scaling
+        # Dynamic speed scaling
         if tick_count % 200 == 0:
-            min_delay = 0.030 if difficulty == 1 else (0.015 if difficulty == 2 else (0.005 if difficulty == 3 else 0.002))
+            min_delay = 0.050 if difficulty == 1 else (0.025 if difficulty == 2 else (0.012 if difficulty == 3 else 0.005))
             if current_delay > min_delay:
-                current_delay = max(min_delay, current_delay - 0.001)
+                current_delay = max(min_delay, current_delay - 0.005)
 
-        # Get non-blocking user input
         key = get_key_pressed()
         fired = False
 
         if key is not None:
-            if key in ("arrow_K", "a", "arrow_left", "arrow_D"): # Left
+            if key in ("arrow_K", "a", "arrow_left", "arrow_D", "a_left"):
                 if player_col > 0:
                     player_col -= 1
-            elif key in ("arrow_M", "d", "arrow_right", "arrow_C"): # Right
+            elif key in ("arrow_M", "d", "arrow_right", "arrow_C", "a_right"):
                 if player_col < cols - 1:
                     player_col += 1
-            elif key in (" ", "\r", "\n"): # Fire weapon (downward in Levels)
+            elif key in (" ", "\r", "\n"): # Fire weapon (downwards in levels)
                 if gmode == 1:
                     fired = True
                 else:
-                    # Original screen clearing explosion / boom in endless
                     if special > 0:
                         special -= 1
                         play_sound_file("cache/boom.wav")
-                        # Clear viewport of all meteors
                         for r in range(view_height):
                             for c in range(cols):
                                 if map_rows[r][c] not in (" ", char_gem, char_heart, char_sun):
                                     map_rows[r][c] = "."
-            elif key == "\x1b": # ESC pause
+            elif key == "\x1b":
                 act = pause_menu()
                 if act == "quit":
                     stop_bg_music()
@@ -428,35 +417,28 @@ def run_game():
                 play_sound_file("cache/boom.wav")
 
         # Scroll the map (Move view downwards)
-        map_rows.pop(0) # Remove top row
-        # Generate new row at bottom
+        map_rows.pop(0)
         new_row = [" " for _ in range(cols)]
 
-        # In level mode, handle landing strip boundaries
         if gmode == 1:
             if level_scroll_count == level_goal_row:
-                # Spawn Landing pad
                 for c in range(cols):
                     new_row[c] = "═"
-                new_row[cols // 2] = " " # Landing spot
+                new_row[cols // 2] = " "
             elif level_scroll_count > level_goal_row - 10 and level_scroll_count <= level_goal_row + 5:
-                # Empty space around landing pad
                 pass
             else:
-                # Regular map row generation
                 for c in range(cols):
                     num = random.randint(0, 999)
-                    if num < 5: # Shield Seed
+                    if num < 5:
                         new_row[c] = char_sun
-                    elif num >= 100 and num <= 108: # Heart Seed
+                    elif num >= 100 and num <= 108:
                         new_row[c] = char_heart
-                    elif num >= 200 and num <= 215: # Gem Seed
+                    elif num >= 200 and num <= 215:
                         new_row[c] = char_gem
-                    elif num >= 50 and num <= 60 + difficulty * 10: # Meteors
-                        # Use random block patterns matching batch
+                    elif num >= 50 and num <= 60 + difficulty * 10:
                         new_row[c] = random.choice(["░", "@", "#", "▒", "▓", "█", "▄", "▀", "▌", "▐"])
         else:
-            # Endless generation
             for c in range(cols):
                 num = random.randint(0, 999)
                 if num < 5:
@@ -471,12 +453,10 @@ def run_game():
         map_rows.append(new_row)
         score += 1
 
-        # Check level completion (Level Mode)
+        # Check level completion
         if gmode == 1 and level_scroll_count >= level_goal_row:
-            # If player reaches the landing pad row
             if player_row == view_height - 1 or level_scroll_count == level_goal_row + 4:
                 if player_col == cols // 2:
-                    # Successful Landing!
                     play_sound_file("cache/heart.wav")
                     os.system('cls' if os.name == 'nt' else 'clear')
                     draw_header_title()
@@ -485,7 +465,7 @@ def run_game():
                     print(f"\n{C_BOLD}{C_GREEN}====================================={C_RESET}")
                     print(f"{C_BOLD}{C_GREEN}         LEVEL {level} COMPLETE!{C_RESET}")
                     print(f"{C_BOLD}{C_GREEN}====================================={C_RESET}\n")
-                    print(f"  Successful Landing Bonus: +{bonus_pts} pts")
+                    print(f"  Landing Bonus: +{bonus_pts} pts")
                     print(f"  Current Score: {score}")
                     print(f"\nPress any key for Level {level + 1}...")
                     while True:
@@ -494,18 +474,16 @@ def run_game():
                         time.sleep(0.05)
                     level += 1
                     level_scroll_count = 0
-                    # Reset playfield
                     map_rows = [[" " for _ in range(cols)] for _ in range(view_height)]
                     player_bullets = []
                     enemy_bullets = []
                     bullets_left = 10
                     continue
                 else:
-                    # Crash landing!
                     lives -= 1
                     damage += 1
                     play_sound_file("cache/damage.wav")
-                    level_scroll_count = level_goal_row - 15 # Bounce back a bit
+                    level_scroll_count = level_goal_row - 15
 
         # Update Player Bullets (moving down screen, +y relative)
         active_bullets = []
@@ -518,7 +496,7 @@ def run_game():
                     cell = map_rows[test_r][bc]
                     if cell != " " and cell != "▲":
                         hit = True
-                        map_rows[test_r][bc] = " " # Clear it
+                        map_rows[test_r][bc] = " "
                         if cell == char_gem:
                             gems += 1
                             score += 5 * difficulty + 5
@@ -537,19 +515,16 @@ def run_game():
                             flash_item_bg = C_CYAN
                             flash_tick = 3
                         else:
-                            # Hit meteor
                             map_rows[test_r][bc] = "."
                             play_sound_file("cache/damage.wav")
                         break
                     elif cell == "▲":
-                        # Hit enemy ship!
                         hit = True
                         map_rows[test_r][bc] = " "
                         score += 1000
                         play_sound_file("cache/boom.wav")
                         break
             if not hit:
-                # Move down
                 new_br = br + 3
                 if new_br < view_height:
                     active_bullets.append([bc, new_br])
@@ -565,7 +540,6 @@ def run_game():
                 if test_r >= 0:
                     if test_r == player_row and ebc == player_col:
                         hit = True
-                        # Damage player!
                         lives -= 1
                         damage += 1
                         play_sound_file("cache/damage.wav")
@@ -576,7 +550,7 @@ def run_game():
                     active_ebullets.append([ebc, new_ebr])
         enemy_bullets = active_ebullets
 
-        # Update Enemies on map (they move side-to-side and spawn bullets up, -y relative)
+        # Update Enemies on map (scrolling up naturally, moving side-to-side, and shooting UP)
         if gmode == 1:
             for r in range(view_height - 1, -1, -1):
                 for c in range(cols):
@@ -584,23 +558,20 @@ def run_game():
                         map_rows[r][c] = " "
                         move = random.choice([-1, 0, 1])
                         new_c = max(0, min(cols - 1, c + move))
-                        # Fire bullet upwards (-y)
                         if random.randint(0, 5) == 0:
                             enemy_bullets.append([new_c, r - 1])
                         if r < view_height:
-                            # Write back
                             map_rows[r][new_c] = "▲"
 
-            # Spawn new enemy at the bottom (view_height - 1)
             if tick_count % 15 == 0:
                 spawn_c = random.randint(0, cols - 1)
                 if map_rows[view_height - 1][spawn_c] == " ":
                     map_rows[view_height - 1][spawn_c] = "▲"
 
-        # Check collision of player with items or obstacles on current viewport position
+        # Resolve player direct collisions
         player_cell = map_rows[player_row][player_col]
         if player_cell != " ":
-            map_rows[player_row][player_col] = " " # Claim it
+            map_rows[player_row][player_col] = " "
             if player_cell == char_gem:
                 gems += 1
                 score += 5 * difficulty + 5
@@ -617,7 +588,6 @@ def run_game():
                 damage += 1
                 play_sound_file("cache/damage.wav")
             else:
-                # Meteor crash!
                 damage += 1
                 play_sound_file("cache/damage.wav")
                 if special > 0:
@@ -626,37 +596,30 @@ def run_game():
                 else:
                     lives -= 3
 
-        # Game Over Check
         if lives <= 0:
             stop_bg_music()
             game_over_screen()
             return
 
-        # RENDER FRAME (Flicker-Free ANSI double buffering)
+        # RENDER FRAME
         frame_buffer = []
-
-        # Pad sidebar
-        pad_size = 15
+        pad_size = 5
         sidebar = " " * pad_size
 
         # Top Bar
         hearts_str = f"{C_RED}{char_heart * lives}{C_RESET}" + f"{C_WHITE}_{C_RESET}" * (10 - lives)
         shield_str = f"{C_CYAN}{char_sun * special}{C_RESET}" + f"{C_WHITE}_{C_RESET}" * (5 - special)
-
         frame_buffer.append(f"\n{sidebar}{C_BOLD}{C_WHITE} Lives: {hearts_str}  Shields: {shield_str}{C_RESET}\n")
 
         # Draw map
         for r in range(view_height):
             line_parts = []
             for c in range(cols):
-                # Is player bullet here?
                 is_bullet = False
                 for b in player_bullets:
                     if b[0] == c and b[1] == r:
                         is_bullet = True
                         break
-
-                # Is enemy bullet here?
                 is_ebullet = False
                 for eb in enemy_bullets:
                     if eb[0] == c and eb[1] == r:
@@ -664,15 +627,14 @@ def run_game():
                         break
 
                 if r == player_row and c == player_col:
-                    # Player ship
                     if flash_tick > 0 and flash_item_bg:
                         line_parts.append(f"{flash_item_bg}{char_down}{C_RESET}")
                     else:
                         line_parts.append(f"{C_CYAN}{C_BOLD}{char_down}{C_RESET}")
                 elif is_bullet:
-                    line_parts.append(f"{C_YELLOW}•{C_RESET}") # Player bullet fires down, smaller
+                    line_parts.append(f"{C_YELLOW}•{C_RESET}")
                 elif is_ebullet:
-                    line_parts.append(f"{C_RED}↑{C_RESET}") # Enemy bullet fires up, laser-arrow
+                    line_parts.append(f"{C_RED}↑{C_RESET}")
                 else:
                     cell = map_rows[r][c]
                     if cell == "▲":
@@ -691,12 +653,11 @@ def run_game():
             middle_map = "".join(line_parts)
             frame_buffer.append(f"{sidebar}{C_WHITE}│{C_RESET}{middle_map}{C_WHITE}│{C_RESET}\n")
 
-        # Bottom Bar / Stats
+        # Bottom Bar
         ammo_str = f" [Ammo: {bullets_left}]" if gmode == 1 else ""
         gmode_str = "Levels" if gmode == 1 else "Endless"
         frame_buffer.append(f"{sidebar}{C_BOLD}{C_GREEN}Score: {score}  Level: {level} ({gmode_str}){ammo_str}{C_RESET}\n")
 
-        # Reposition cursor to (0,0) and print
         sys.stdout.write("\033[H" + "".join(frame_buffer))
         sys.stdout.flush()
 
@@ -717,7 +678,6 @@ def game_over_screen():
     print(f"  Gems       : {gems}")
     print(f"  Damage Taken: {damage}")
 
-    # Calculate bonus
     bonus = level * 10 * difficulty
     final_score = score + bonus
 
@@ -726,11 +686,9 @@ def game_over_screen():
     print(f"  {C_BOLD}{C_GREEN}FINAL SCORE: {final_score}{C_RESET}")
     print()
 
-    # Get initials
     print("Enter your initials (3 Letters): ", end="")
     sys.stdout.flush()
 
-    # Simple terminal input
     initials = ""
     while len(initials) < 3:
         key = get_key_pressed()
@@ -749,7 +707,6 @@ def game_over_screen():
         time.sleep(0.05)
 
 if __name__ == "__main__":
-    # Create cache folder if it does not exist
     os.makedirs("cache", exist_ok=True)
     os.makedirs("data", exist_ok=True)
 
