@@ -173,9 +173,9 @@ set enemy_spawn_timer=0
 set level_goal_row=150
 set xmax=%rows%
 set ymax=%view%
-set /a x=%xmax%/2
-set x_=%x% %% 2
-if not "%x_%"=="0" set /a x=%x%+1
+set /a x=xmax/2
+set /a x_=x %% 2
+if not "%x_%"=="0" set /a x=x+1
 set y=2
 set /a start=0
 set /a end=%start%+%mem%
@@ -204,7 +204,7 @@ set tmpside=
 set refresh_top=1
 call :gam.music 1
 bin\bg.exe Locate 0 0
-bin\bg.exe print 8 "%test_%"
+for /l %%a in (0,1,%ywin%) do bin\bg.exe print 8 "%test%"
 title GaMe
 set tptC=0
 set tss=%time%
@@ -446,59 +446,37 @@ goto :eof
 
 :gam.draw
 ::Write active part of map to screen from memory
-if "%color_on%"=="0" (
-	bin\bg.exe Locate 0 0
-	echo.%test%%bs_%%hearts% %boom%
-	for /l %%y in (%ymin%,1,%ymax%) do (
-		for /l %%x in (1,1,%xmax%) do (
-			set line%%y=!line%%y!!x%%x-y%%y!
-		)
-		set /p "=%sidel%�!line%%y!�%sider%  " <NUL
-		set line%%y=
+set /a ywin_tmp=%ywin%-1
+set /a pad_tmp=%pad%-2
+if "!refresh_top!"=="1" bin\bg.exe fcprint 0 0 8 "%test%"
+if "!refresh_top!"=="1" bin\bg.exe fcprint 0 1 4 "%hearts% " D "%boom%"
+if "!refresh_top!"=="1" set refresh_top=0
+set color_stack=
+for /l %%y in (%ymin%,1,%ymax%) do (
+	for /l %%x in (1,1,%xmax%) do (
+		if "!x%%x-y%%y!"=="%char_heart%" set line%%y=!line%%y!" 4 "%char_heart%" F "
+		if "!x%%x-y%%y!"=="%char_gem%" set line%%y=!line%%y!" A "%char_gem%" F "
+		if "!x%%x-y%%y!"=="%char_sun%" set line%%y=!line%%y!" D "%char_sun%" F "
+		if "!x%%x-y%%y!"=="▲" set line%%y=!line%%y!" C "▲" F "
+		if "!x%%x-y%%y!"=="↑" set line%%y=!line%%y!" E "↑" F "
+		if "!x%%x-y%%y!"=="•" set line%%y=!line%%y!" E "•" F "
+		if %lives% gtr 0 if "%pos%"=="%char_gem%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" A6 "%char_down%" F "
+		if %lives% gtr 0 if "%pos%"=="%char_heart%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" 46 "%char_down%" F "
+		if %lives% gtr 0 if "%pos%"=="%char_sun%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" D6 "%char_down%" F "
+		if %lives% gtr 0 if not "%pos%"=="%char_sun%" if not "%pos%"=="%char_heart%" if not "%pos%"=="%char_gem%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" 6 "%char_down%" F "
+		if %lives% leq 0 if "!x%%x-y%%y!"=="X" set line%%y=!line%%y!" C4 "X" F "
+		if not "!x%%x-y%%y!"=="%char_heart%" if not "!x%%x-y%%y!"=="%char_gem%" if not "!x%%x-y%%y!"=="%char_sun%" if not "!x%%x-y%%y!"=="%char_down%" if not "!x%%x-y%%y!"=="▲" if not "!x%%x-y%%y!"=="↑" if not "!x%%x-y%%y!"=="•" if not "!x%%x-y%%y!"=="X" set line%%y=!line%%y!!x%%x-y%%y!
 	)
-	::Write score and level
-	set /p "=%test%%bs_%" <NUL
-	if "%gmode%"=="1" (
-		set /p "=SCORE: %score%  LVL: %level% GEMS: %gems% AMMO: %bullets_left%" <NUL
-	) else (
-		set /p "=SCORE: %score%  LVL: %level% GEMS: %gems%" <NUL
-	)
+	set color_stack=!color_stack! 8 "%sidel%" F "│!line%%y!│" 8 "\n"
+	set line%%y=
 )
-
-if "%color_on%"=="1" (
-	set /a ywin_tmp=%ywin%-1
-	set /a pad_tmp=%pad%-2
-	if "!refresh_top!"=="1" bin\bg.exe fcprint 0 0 8 "%test%"
-	if "!refresh_top!"=="1" bin\bg.exe fcprint 0 1 4 "%hearts% " D "%boom%"
-	if "!refresh_top!"=="1" set refresh_top=0
-	set color_stack=
-	for /l %%y in (%ymin%,1,%ymax%) do (
-		for /l %%x in (1,1,%xmax%) do (
-			if "!x%%x-y%%y!"=="%char_heart%" set line%%y=!line%%y!" 4 "%char_heart%" F "
-			if "!x%%x-y%%y!"=="%char_gem%" set line%%y=!line%%y!" A "%char_gem%" F "
-			if "!x%%x-y%%y!"=="%char_sun%" set line%%y=!line%%y!" D "%char_sun%" F "
-			if "!x%%x-y%%y!"=="▲" set line%%y=!line%%y!" C "▲" F "
-			if "!x%%x-y%%y!"=="↑" set line%%y=!line%%y!" E "↑" F "
-			if "!x%%x-y%%y!"=="•" set line%%y=!line%%y!" E "•" F "
-			if %lives% gtr 0 if "%pos%"=="%char_gem%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" A6 "%char_down%" F "
-			if %lives% gtr 0 if "%pos%"=="%char_heart%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" 46 "%char_down%" F "
-			if %lives% gtr 0 if "%pos%"=="%char_sun%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" D6 "%char_down%" F "
-			if %lives% gtr 0 if not "%pos%"=="%char_sun%" if not "%pos%"=="%char_heart%" if not "%pos%"=="%char_gem%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" 6 "%char_down%" F "
-			if %lives% leq 0 if "!x%%x-y%%y!"=="X" set line%%y=!line%%y!" C4 "X" F "
-			if not "!x%%x-y%%y!"=="%char_heart%" if not "!x%%x-y%%y!"=="%char_gem%" if not "!x%%x-y%%y!"=="%char_sun%" if not "!x%%x-y%%y!"=="%char_down%" if not "!x%%x-y%%y!"=="▲" if not "!x%%x-y%%y!"=="↑" if not "!x%%x-y%%y!"=="•" if not "!x%%x-y%%y!"=="X" set line%%y=!line%%y!!x%%x-y%%y!
-		)
-		set color_stack=!color_stack! 8 "%sidel%" F "│!line%%y!│" 8 "\n"
-		set line%%y=
-	)
-	::bin\bg.exe print !color_stack!
-	bin\bg.exe fcprint 1 0 !color_stack!
-	::Write score and level
-	if "%gmode%"=="1" (
-		bin\bg.exe fcprint !ywin_tmp! 0 F "SCORE:%score% LVL:%level% " A "%char_gem%" F ":%gems% [AMMO:%bullets_left%]"
-	) else (
-		bin\bg.exe fcprint !ywin_tmp! 0 F "SCORE:%score% LVL:%level% " A "%char_gem%" F ":%gems% "
-	)
-	
+::bin\bg.exe print !color_stack!
+bin\bg.exe fcprint 1 0 !color_stack!
+::Write score and level
+if "%gmode%"=="1" (
+	bin\bg.exe fcprint !ywin_tmp! 0 F "SCORE:%score% LVL:%level% " A "%char_gem%" F ":%gems% [AMMO:%bullets_left%]"
+) else (
+	bin\bg.exe fcprint !ywin_tmp! 0 F "SCORE:%score% LVL:%level% " A "%char_gem%" F ":%gems% "
 )
 ::Erase last row from memory
 set /a ly=%ymin%-1
@@ -507,6 +485,7 @@ for /l %%x in (1,1,%xmax%) do (
 )
 set theory=
 goto :eof
+
 :gam.refresh.icons
 ::Convert lives into hearts
 set hearts=
@@ -560,7 +539,7 @@ goto :eof
 
 :gam.level_complete
 cls
-bin\bg.exe print 8 "%test_%"
+for /l %%a in (0,1,%ywin%) do bin\bg.exe print 8 "%test%"
 bin\bg.exe Locate 0 0
 title GaMe - Level Complete!
 set /a level_bonus=%level% * 500
@@ -657,7 +636,8 @@ set /a ywin_tmp=%ywin%-3
 title GaMe - Menu
 set name=
 set tmpside=
-bin\bg.exe locate 0 0&bin\bg.exe print 26 "%test_%"
+bin\bg.exe locate 0 0
+for /l %%a in (0,1,%ywin%) do bin\bg.exe print 8 "%test%"
 for /l %%t in (0,2,%xwin%) do set /a tmpside=!tmpside!+1
 set /a tmpside=!tmpside!-16
 for /l %%a in (1,1,16) do bin\bg.exe fcprint %%a !tmpside! f "                               "
@@ -673,14 +653,13 @@ bin\bg.exe fcprint 1 !tmpside! 7 "      " 9A "                    \n"
 bin\bg.exe fcprint 2 !tmpside! 7 "      " 9A "  Gems" 97 " and " 9F "Meteors  \n"
 bin\bg.exe fcprint 3 !tmpside! 7 "      " 9A "                    \n"
 bin\bg.exe fcprint 5 !tmpside! 7 "       " 8F "!sel_char1! Start GaM       \n"
-bin\bg.exe fcprint 6 !tmpside! 7 "       " 8F "!sel_char2! Game Mode: !mode_str! \n"
+bin\bg.exe fcprint 6 !tmpside! 7 "       " 8F "!sel_char2! Mode: !mode_str! \n"
 bin\bg.exe fcprint 7 !tmpside! 7 "       " 8F "!sel_char3! Scores          \n"
 bin\bg.exe fcprint 8 !tmpside! 7 "       " 8F "!sel_char4! Controls        \n"
 bin\bg.exe fcprint 9 !tmpside! 7 "       " 8F "!sel_char5! Goals           \n"
-bin\bg.exe fcprint 10 !tmpside! 7 "       " 8F "!sel_char6! Color On: %color_on%   \n"
-bin\bg.exe fcprint 11 !tmpside! 7 "       " 8F "!sel_char7! Muted: %mute%      \n"
-bin\bg.exe fcprint 12 !tmpside! 7 "       " 8F "!sel_char8! Difficulty: %difficulty% \n"
-bin\bg.exe fcprint 13 !tmpside! 7 "       " 8F "!sel_char9! Quit            \n"
+bin\bg.exe fcprint 10 !tmpside! 7 "       " 8F "!sel_char6! Muted: %mute%      \n"
+bin\bg.exe fcprint 11 !tmpside! 7 "       " 8F "!sel_char7! Difficulty: %difficulty% \n"
+bin\bg.exe fcprint 12 !tmpside! 7 "       " 8F "!sel_char8! Quit            \n"
 if "%debug%"=="1" bin\bg.exe fcprint %ywin_tmp% 0 7 "%sidel%###############\n" 8 "%xwin%x%ywin%/%xmax%x%ymax%/%pad%(%iseven%)%input%    "
 if not "%connection%"=="1" bin\bg.exe fcprint %ywin_tmp% !tmpside! 4F "Offline" CF " Scores wont post online" 07 \n
 call :gam.input
@@ -692,16 +671,13 @@ if "%input%"=="336" set /a sel=%sel%+1
 if "%input%"=="333" set /a sel=%sel%+1
 if "%input%"=="331" set /a sel=%sel%-1
 if "%input%"=="328" set /a sel=%sel%-1
-if "%sel%"=="0" set sel=9
-if "%sel%"=="10" set sel=1
+if "%sel%"=="0" set sel=8
+if "%sel%"=="9" set sel=1
 if "%input%"=="3" del .stop&exit
 if "%input%"=="4" set debug=1&call :gam.format&goto :gam.menu
 if "%input%"=="87" cls&goto :gam.menu
 if "%input%"=="18" cls&goto :init
 if "%input%"=="113" del .stop&exit
-if "%input%"=="99" if "%color_on%"=="1" set color_on=-1
-if "%input%"=="99" if "%color_on%"=="0" set color_on=1&call :gam.conf.save
-if "%input%"=="99" if "%color_on%"=="-1" set color_on=0&call :gam.conf.save
 if "%input%"=="109" if "%mute%"=="1" set mute=-1
 if "%input%"=="109" if "%mute%"=="0" set mute=1&call :gam.conf.save
 if "%input%"=="109" if "%mute%"=="-1" set mute=0&call :gam.conf.save
@@ -719,24 +695,18 @@ if "%sel%"=="3" goto :gam.download
 if "%sel%"=="4" call :gam.controls&goto :gam.menu
 if "%sel%"=="5" call :gam.goals&goto :gam.menu
 if "%sel%"=="6" (
-	if "%color_on%"=="1" (set color_on=-1) else if "%color_on%"=="0" (set color_on=1) else (set color_on=0)
-	call :gam.conf.save
-	goto gam.menu
-)
-if "%sel%"=="7" (
 	if "%mute%"=="1" (set mute=-1) else if "%mute%"=="0" (set mute=1) else (set mute=0)
 	call :gam.conf.save
 	goto gam.menu
 )
-if "%sel%"=="8" (
-	set /a difficulty=%difficulty%+1
+if "%sel%"=="7" (
+	set /a difficulty=difficulty+1
 	if "!difficulty!"=="5" set difficulty=1
 	call :gam.format
 	call :gam.conf.save
 	goto gam.menu
 )
-if "%sel%"=="9" del .stop&exit
-goto :gam.menu0
+if "%sel%"=="8" del .stop&exit
 
 :gam.goals
 cls
@@ -835,8 +805,8 @@ for /l %%y in (%start%,1,%end%) do (
 	)
 )
 ::Clear a starting path (+5) if first map
-set /a ly=%y%-1
-set /a ny=%y%+5
+set /a ly=y-1
+set /a ny=y+5
 for /l %%y in (%ly%,1,%ny%) do (
 	if "%level%"=="1" if not "!x%x%-y%%y!"==" " set x%x%-y%%y= 
 )
@@ -858,14 +828,11 @@ set xmax=%rows%
 set ymax=%view%
 set /a pad=(%xwin%/2)-(%xmax%/2)-1
 set /a iseven=%xwin% %% 2
-set /a mem=%viewmax%+%rows%+5
-set sider=&set sidel=&set test=&set test_=&set xside=0
+set /a mem=viewmax+rows+5
+set sider=&set sidel=&set test=&set xside=0
 ::Generate display shortcuts
 for /l %%x in (1,1,%xwin%) do (
 	set test=░!test!
-)
-for /l %%y in (0,1,%ywin%) do (
-	set test_=!test_!!test!
 )
 if "%iseven%"=="1" for /l %%x in (1,1,%pad%) do (
 	set sidel=░!sidel!
@@ -963,8 +930,7 @@ set /a tmpside=!tmpside!-(!tmpspc_c!+4)
 set /a tmp_=%ywin%-2
 set /a tmp_2=%ywin%-5
 bin\bg.exe Locate 0 0
-if "%color_on%"=="0" for /l %%a in (0,1,%tmp_%) do echo.%test%
-if "%color_on%"=="1" bin\bg.exe print 8 "%test_%"
+for /l %%a in (0,1,%ywin%) do bin\bg.exe print 8 "%test%"
 bin\bg.exe Locate 0 1
 echo.%hearts% %boom% 
 bin\bg.exe fcprint 5 !tmpside! 7 "       " 8F " GAME PAUSED \n"
@@ -984,7 +950,7 @@ set tmpside=
 set tmpspc=
 set tmpspc_c=
 bin\bg.exe Locate 0 0
-bin\bg.exe print 8 "%test_%"
+for /l %%a in (0,1,%ywin%) do bin\bg.exe print 8 "%test%"
 if "%input%"=="3" set lives=0&call :gam.pause.timefix&del .pause 2>nul&goto :eof
 if "%input%"=="113" set lives=0&call :gam.pause.timefix&del .pause 2>nul&goto :eof
 if "%input%"=="27" call :gam.pause.timefix&del .pause 2>nul&set ingame=1&goto :eof

@@ -545,12 +545,33 @@ class GameApp(tk.Tk):
                 is_ebullet = any(eb[0] == c and eb[1] == r for eb in self.enemy_bullets)
 
                 if r == self.player_row and c == self.player_col:
-                    # Beautiful cyan ship triangle pointing down
+                    # Beautiful, cool space-shippy player spaceship facing down
+                    # Thruster Flame at the top/rear of the ship
                     self.game_canvas.create_polygon(
-                        rx + self.cell_w//2, ry + self.cell_h,
-                        rx, ry,
-                        rx + self.cell_w//2, ry + 8,
-                        rx + self.cell_w, ry,
+                        rx + self.cell_w//2 - 5, ry + 4,
+                        rx + self.cell_w//2 + 5, ry + 4,
+                        rx + self.cell_w//2, ry,
+                        fill=COLOR_YELLOW, outline=COLOR_RED
+                    )
+                    # Swept Wings
+                    self.game_canvas.create_polygon(
+                        rx + 2, ry + 4,
+                        rx + self.cell_w//2 - 5, ry + 12,
+                        rx + self.cell_w//2 - 2, ry + 20,
+                        fill=COLOR_BLUE, outline=COLOR_WHITE
+                    )
+                    self.game_canvas.create_polygon(
+                        rx + self.cell_w - 2, ry + 4,
+                        rx + self.cell_w//2 + 5, ry + 12,
+                        rx + self.cell_w//2 + 2, ry + 20,
+                        fill=COLOR_BLUE, outline=COLOR_WHITE
+                    )
+                    # Main Central Hull pointing down
+                    self.game_canvas.create_polygon(
+                        rx + self.cell_w//2, ry + self.cell_h, # Nose tip
+                        rx + self.cell_w//2 - 6, ry + 8,        # Left rear corner
+                        rx + self.cell_w//2, ry + 14,          # Notch in rear
+                        rx + self.cell_w//2 + 6, ry + 8,        # Right rear corner
                         fill=COLOR_CYAN, outline=COLOR_WHITE
                     )
                 elif is_bullet:
@@ -560,9 +581,22 @@ class GameApp(tk.Tk):
                     # Enemy bullet fires up screen (Red laser beam)
                     self.game_canvas.create_line(rx + self.cell_w//2, ry, rx + self.cell_w//2, ry + self.cell_h, fill=COLOR_RED, width=4)
                 elif cell == "▲":
-                    # Red oval enemy ship
-                    self.game_canvas.create_oval(rx + 2, ry + 4, rx + self.cell_w - 2, ry + self.cell_h - 4, fill=COLOR_RED, outline="")
-                    self.game_canvas.create_oval(rx + self.cell_w//2 - 4, ry + self.cell_h//2 - 4, rx + self.cell_w//2 + 4, ry + self.cell_h//2 + 4, fill=COLOR_YELLOW, outline="")
+                    # Pointy alien space-shippy enemy pointing UPWARDS
+                    self.game_canvas.create_polygon(
+                        rx + self.cell_w//2, ry + 2,                  # Pointy nose tip pointing UP
+                        rx + 2, ry + self.cell_h - 6,                 # Left wing tip
+                        rx + self.cell_w//2 - 4, ry + self.cell_h - 10,# Left inner indent
+                        rx + self.cell_w//2, ry + self.cell_h - 4,    # Rear notch
+                        rx + self.cell_w//2 + 4, ry + self.cell_h - 10,# Right inner indent
+                        rx + self.cell_w - 2, ry + self.cell_h - 6,   # Right wing tip
+                        fill=COLOR_RED, outline=COLOR_YELLOW
+                    )
+                    # Central power core cockpit
+                    self.game_canvas.create_oval(
+                        rx + self.cell_w//2 - 4, ry + self.cell_h//2 - 4,
+                        rx + self.cell_w//2 + 4, ry + self.cell_h//2 + 4,
+                        fill=COLOR_YELLOW, outline=""
+                    )
                 elif cell == "G":
                     # Gem diamond
                     self.game_canvas.create_polygon(
@@ -573,8 +607,18 @@ class GameApp(tk.Tk):
                         fill=COLOR_GREEN, outline=""
                     )
                 elif cell == "H":
-                    # Heart circle
-                    self.game_canvas.create_oval(rx + 2, ry + 2, rx + self.cell_w - 2, ry + self.cell_h - 2, fill=COLOR_RED, outline="")
+                    # Beautiful custom polygon Heart shape
+                    self.game_canvas.create_polygon(
+                        rx + self.cell_w//2, ry + self.cell_h - 4,    # Bottom tip
+                        rx + 2, ry + self.cell_h//2 - 2,              # Left waist
+                        rx + 4, ry + 4,                               # Top left outer hump
+                        rx + self.cell_w//2 - 1, ry + 6,              # Top center cleavage left
+                        rx + self.cell_w//2, ry + 10,                 # Top center plunge
+                        rx + self.cell_w//2 + 1, ry + 6,              # Top center cleavage right
+                        rx + self.cell_w - 4, ry + 4,                 # Top right outer hump
+                        rx + self.cell_w - 2, ry + self.cell_h//2 - 2,# Right waist
+                        fill=COLOR_RED, outline=""
+                    )
                 elif cell == "S":
                     # Shield circle
                     self.game_canvas.create_oval(rx + 2, ry + 2, rx + self.cell_w - 2, ry + self.cell_h - 2, outline=COLOR_BLUE, width=2)
