@@ -9,6 +9,7 @@ zero-compile graphical arcade game that runs flawlessly on any python version (i
 import os
 import sys
 import time
+import math
 import random
 import tkinter as tk
 from tkinter import messagebox
@@ -573,8 +574,19 @@ class GameApp(tk.Tk):
                         fill=COLOR_GREEN, outline=""
                     )
                 elif cell == "H":
-                    # Heart circle
-                    self.game_canvas.create_oval(rx + 2, ry + 2, rx + self.cell_w - 2, ry + self.cell_h - 2, fill=COLOR_RED, outline="")
+                    # Smooth, mathematically round, beautiful heart shape
+                    cx = rx + self.cell_w / 2
+                    cy = ry + self.cell_h / 2
+                    scale_x = (self.cell_w - 4) / 32
+                    scale_y = (self.cell_h - 4) / 29
+                    points = []
+                    for step in range(32):
+                        t = 2 * math.pi * step / 32
+                        rx_param = 16 * (math.sin(t) ** 3)
+                        ry_param = 13 * math.cos(t) - 5 * math.cos(2*t) - 2 * math.cos(3*t) - math.cos(4*t)
+                        points.append(cx + rx_param * scale_x)
+                        points.append(cy - (ry_param + 2.5) * scale_y)
+                    self.game_canvas.create_polygon(points, fill=COLOR_RED, outline="")
                 elif cell == "S":
                     # Shield circle
                     self.game_canvas.create_oval(rx + 2, ry + 2, rx + self.cell_w - 2, ry + self.cell_h - 2, outline=COLOR_BLUE, width=2)

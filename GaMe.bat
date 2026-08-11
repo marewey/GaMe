@@ -306,7 +306,7 @@ if "%gmode%"=="1" (
                         set "hit=1"
                         set "x!bx!-y!check_y!="
                         if "!cell!"=="%char_gem%" (
-                            set /a score=%score%+(5*%difficulty%)+5
+                            set /a score=score+(5*difficulty)+5
                             set /a gems=%gems%+1
                             if "%mute%"=="0" start /b "" bin\bg.exe play cache\gem.wav
                         ) else if "!cell!"=="%char_heart%" (
@@ -593,7 +593,7 @@ goto :eof
 if not "%lives%"=="10" set /a lives=%lives%+1&call :gam.refresh.icons&if "%mute%"=="0" start /b "" bin\bg.exe play cache\heart.wav
 goto :eof
 :gam.add.gem
-set /a score=%score%+(5*%difficulty%)+5
+set /a score=score+(5*difficulty)+5
 set /a gems=%gems%+1
 if "%mute%"=="0" start /b "" bin\bg.exe play cache\gem.wav
 goto :eof
@@ -669,18 +669,31 @@ bin\bg.exe Cursor 0
 set /a tmp_warn_y=!ywin!-4
 for /l %%s in (1,1,9) do set "sel_char%%s= "
 set "sel_char%sel%=►"
+set "opt1=!sel_char1! Start GaM"
+set "opt2=!sel_char2! Game Mode: !mode_str!"
+set "opt3=!sel_char3! Scores"
+set "opt4=!sel_char4! Controls"
+set "opt5=!sel_char5! Goals"
+set "opt6=!sel_char6! Color On: %color_on%"
+set "opt7=!sel_char7! Muted: %mute%"
+set "opt8=!sel_char8! Difficulty: %difficulty%"
+set "opt9=!sel_char9! Quit"
+for /l %%i in (1,1,9) do (
+	set "opt%%i=!opt%%i!                    "
+	set "opt%%i=!opt%%i:~0,20!"
+)
 bin\bg.exe fcprint 1 !tmpside! 7 "      " 9A "                    \n"
 bin\bg.exe fcprint 2 !tmpside! 7 "      " 9A "  Gems" 97 " and " 9F "Meteors  \n"
 bin\bg.exe fcprint 3 !tmpside! 7 "      " 9A "                    \n"
-bin\bg.exe fcprint 5 !tmpside! 7 "       " 8F "!sel_char1! Start GaM       \n"
-bin\bg.exe fcprint 6 !tmpside! 7 "       " 8F "!sel_char2! Game Mode: !mode_str! \n"
-bin\bg.exe fcprint 7 !tmpside! 7 "       " 8F "!sel_char3! Scores          \n"
-bin\bg.exe fcprint 8 !tmpside! 7 "       " 8F "!sel_char4! Controls        \n"
-bin\bg.exe fcprint 9 !tmpside! 7 "       " 8F "!sel_char5! Goals           \n"
-bin\bg.exe fcprint 10 !tmpside! 7 "       " 8F "!sel_char6! Color On: %color_on%   \n"
-bin\bg.exe fcprint 11 !tmpside! 7 "       " 8F "!sel_char7! Muted: %mute%      \n"
-bin\bg.exe fcprint 12 !tmpside! 7 "       " 8F "!sel_char8! Difficulty: %difficulty% \n"
-bin\bg.exe fcprint 13 !tmpside! 7 "       " 8F "!sel_char9! Quit            \n"
+bin\bg.exe fcprint 5 !tmpside! 7 "      " 8F "!opt1!\n"
+bin\bg.exe fcprint 6 !tmpside! 7 "      " 8F "!opt2!\n"
+bin\bg.exe fcprint 7 !tmpside! 7 "      " 8F "!opt3!\n"
+bin\bg.exe fcprint 8 !tmpside! 7 "      " 8F "!opt4!\n"
+bin\bg.exe fcprint 9 !tmpside! 7 "      " 8F "!opt5!\n"
+bin\bg.exe fcprint 10 !tmpside! 7 "      " 8F "!opt6!\n"
+bin\bg.exe fcprint 11 !tmpside! 7 "      " 8F "!opt7!\n"
+bin\bg.exe fcprint 12 !tmpside! 7 "      " 8F "!opt8!\n"
+bin\bg.exe fcprint 13 !tmpside! 7 "      " 8F "!opt9!\n"
 if "%debug%"=="1" bin\bg.exe fcprint %ywin_tmp% 0 7 "%sidel%###############\n" 8 "%xwin%x%ywin%/%xmax%x%ymax%/%pad%(%iseven%)%input%    "
 if not "%connection%"=="1" bin\bg.exe fcprint %ywin_tmp% !tmpside! 4F "Offline" CF " Scores wont post online" 07 \n
 call :gam.input
@@ -835,8 +848,8 @@ for /l %%y in (%start%,1,%end%) do (
 	)
 )
 ::Clear a starting path (+5) if first map
-set /a ly=%y%-1
-set /a ny=%y%+5
+set /a ly=y-1
+set /a ny=y+5
 for /l %%y in (%ly%,1,%ny%) do (
 	if "%level%"=="1" if not "!x%x%-y%%y!"==" " set x%x%-y%%y= 
 )
@@ -856,9 +869,9 @@ set /a view=%window_height%-3
 if %view% geq %viewmax% set view=%viewmax%
 set xmax=%rows%
 set ymax=%view%
-set /a pad=(%xwin%/2)-(%xmax%/2)-1
-set /a iseven=%xwin% %% 2
-set /a mem=%viewmax%+%rows%+5
+set /a pad=(xwin/2)-(xmax/2)-1
+set /a iseven=xwin %% 2
+set /a mem=viewmax+rows+5
 set sider=&set sidel=&set test=&set test_=&set xside=0
 ::Generate display shortcuts
 for /l %%x in (1,1,%xwin%) do (
@@ -967,12 +980,22 @@ if "%color_on%"=="0" for /l %%a in (0,1,%tmp_%) do echo.%test%
 if "%color_on%"=="1" bin\bg.exe print 8 "%test_%"
 bin\bg.exe Locate 0 1
 echo.%hearts% %boom% 
-bin\bg.exe fcprint 5 !tmpside! 7 "       " 8F " GAME PAUSED \n"
-bin\bg.exe fcprint 6 !tmpside! 7 "       " 8F "___________________\n"
-bin\bg.exe fcprint 8 !tmpside! 7 "       " 8F " [ESC] Resume \n"
-bin\bg.exe fcprint 9 !tmpside! 7 "       " 8F " [M]   Toggle Mute: %mute% \n"
-bin\bg.exe fcprint 10 !tmpside! 7 "       " 8F " [Q]   Quit Game \n"
-bin\bg.exe fcprint 11 !tmpside! 7 "       " 8F "___________________\n"
+set "popt1=       GAME PAUSED        "
+set "popt2=__________________________"
+set "popt3= [ESC] Resume"
+set "popt4= [M]   Toggle Mute: %mute%"
+set "popt5= [Q]   Quit Game"
+set "popt6=__________________________"
+for %%i in (3,4,5) do (
+	set "popt%%i=!popt%%i!                          "
+	set "popt%%i=!popt%%i:~0,26!"
+)
+bin\bg.exe fcprint 5 !tmpside! 7 "       " 8F "!popt1!\n"
+bin\bg.exe fcprint 6 !tmpside! 7 "       " 8F "!popt2!\n"
+bin\bg.exe fcprint 8 !tmpside! 7 "       " 8F "!popt3!\n"
+bin\bg.exe fcprint 9 !tmpside! 7 "       " 8F "!popt4!\n"
+bin\bg.exe fcprint 10 !tmpside! 7 "       " 8F "!popt5!\n"
+bin\bg.exe fcprint 11 !tmpside! 7 "       " 8F "!popt6!\n"
 if "%debug%"=="1" bin\bg.exe fcprint !tmp_2! 0 7 "XWIN:%xwin% YWIN:%ywin% VIEW:%view%\nMUTED:%mute% MUSIC:%music% COLOR:%color_on%\nDIFF:%difficulty% SPEED:%speed%  MEM:%mem%"
 bin\bg.exe fcprint !tmp_! 0 7 "SCORE:%score% LVL:%level% %char_gem%:%gems% "
 call :gam.input

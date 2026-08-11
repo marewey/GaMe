@@ -36,6 +36,38 @@ if os.name == 'nt':
     kernel32.GetConsoleMode(hStdOut, ctypes.byref(mode))
     kernel32.SetConsoleMode(hStdOut, mode.value | 0x0004)
 
+    # Dynamic high-quality console font resizing
+    try:
+        class COORD(ctypes.Structure):
+            _fields_ = [("X", ctypes.c_short), ("Y", ctypes.c_short)]
+
+        class CONSOLE_FONT_INFOEX(ctypes.Structure):
+            _fields_ = [
+                ("cbSize", ctypes.c_ulong),
+                ("nFont", ctypes.c_ulong),
+                ("dwFontSize", COORD),
+                ("FontFamily", ctypes.c_uint),
+                ("FontWeight", ctypes.c_uint),
+                ("FaceName", ctypes.c_wchar * 32)
+            ]
+
+        font_info = CONSOLE_FONT_INFOEX()
+        font_info.cbSize = ctypes.sizeof(CONSOLE_FONT_INFOEX)
+        font_info.nFont = 0
+        font_info.dwFontSize.X = 20  # width
+        font_info.dwFontSize.Y = 39  # height
+        font_info.FontFamily = 48    # FF_DONTCARE
+        font_info.FontWeight = 900   # FW_BOLD
+        font_info.FaceName = "Terminal"
+
+        ctypes.windll.kernel32.SetCurrentConsoleFontEx(
+            hStdOut,
+            ctypes.c_long(False),
+            ctypes.byref(font_info)
+        )
+    except Exception:
+        pass
+
 # Keyboard input for Windows / POSIX supporting arrow keys and WASD
 try:
     import msvcrt
