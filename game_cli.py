@@ -54,8 +54,8 @@ if os.name == 'nt':
         font_info = CONSOLE_FONT_INFOEX()
         font_info.cbSize = ctypes.sizeof(CONSOLE_FONT_INFOEX)
         font_info.nFont = 0
-        font_info.dwFontSize.X = 20  # width
-        font_info.dwFontSize.Y = 39  # height
+        font_info.dwFontSize.X = 22  # width
+        font_info.dwFontSize.Y = 44  # height
         font_info.FontFamily = 48    # FF_DONTCARE
         font_info.FontWeight = 900   # FW_BOLD
         font_info.FaceName = "Terminal"
@@ -162,7 +162,7 @@ def stop_bg_music():
 char_down = "▼"
 char_gem = "♦"
 char_heart = "♥"
-char_sun = "☼"
+char_sun = "○"
 
 # Game Settings
 gmode = 1 # 1: Levels, 0: Endless
@@ -635,7 +635,7 @@ def run_game():
 
         # RENDER FRAME
         frame_buffer = []
-        pad_size = 5
+        pad_size = (43 - (cols + 2)) // 2
         sidebar = " " * pad_size
 
         # Top Bar

@@ -546,13 +546,26 @@ class GameApp(tk.Tk):
                 is_ebullet = any(eb[0] == c and eb[1] == r for eb in self.enemy_bullets)
 
                 if r == self.player_row and c == self.player_col:
-                    # Beautiful cyan ship triangle pointing down
+                    # Beautiful custom yellow starfighter pointing down (delta wings, rear thruster ports)
                     self.game_canvas.create_polygon(
                         rx + self.cell_w//2, ry + self.cell_h,
-                        rx, ry,
-                        rx + self.cell_w//2, ry + 8,
-                        rx + self.cell_w, ry,
-                        fill=COLOR_CYAN, outline=COLOR_WHITE
+                        rx + 3*self.cell_w//4, ry + 3*self.cell_h//4,
+                        rx + self.cell_w - 2, ry + self.cell_h//4,
+                        rx + 4*self.cell_w//5, ry + self.cell_h//5,
+                        rx + 3*self.cell_w//5, ry + self.cell_h//10,
+                        rx + self.cell_w//2, ry + self.cell_h//4,
+                        rx + 2*self.cell_w//5, ry + self.cell_h//10,
+                        rx + self.cell_w//5, ry + self.cell_h//5,
+                        rx + 2, ry + self.cell_h//4,
+                        rx + self.cell_w//4, ry + 3*self.cell_h//4,
+                        fill=COLOR_YELLOW, outline=COLOR_WHITE, width=1.5
+                    )
+                    # Cockpit canopy glass (Cyan)
+                    self.game_canvas.create_polygon(
+                        rx + self.cell_w//2, ry + 4*self.cell_h//5,
+                        rx + 3*self.cell_w//5, ry + self.cell_h//2,
+                        rx + 2*self.cell_w//5, ry + self.cell_h//2,
+                        fill=COLOR_CYAN, outline=""
                     )
                 elif is_bullet:
                     # Player bullet fires down screen (Green plasma circle)
@@ -561,9 +574,27 @@ class GameApp(tk.Tk):
                     # Enemy bullet fires up screen (Red laser beam)
                     self.game_canvas.create_line(rx + self.cell_w//2, ry, rx + self.cell_w//2, ry + self.cell_h, fill=COLOR_RED, width=4)
                 elif cell == "▲":
-                    # Red oval enemy ship
-                    self.game_canvas.create_oval(rx + 2, ry + 4, rx + self.cell_w - 2, ry + self.cell_h - 4, fill=COLOR_RED, outline="")
-                    self.game_canvas.create_oval(rx + self.cell_w//2 - 4, ry + self.cell_h//2 - 4, rx + self.cell_w//2 + 4, ry + self.cell_h//2 + 4, fill=COLOR_YELLOW, outline="")
+                    # Beautiful orange alien ship pointing up (nose pointing up, rear nozzles)
+                    self.game_canvas.create_polygon(
+                        rx + self.cell_w//2, ry,
+                        rx + self.cell_w//4, ry + self.cell_h//4,
+                        rx + 2, ry + 3*self.cell_h//4,
+                        rx + self.cell_w//5, ry + 4*self.cell_h//5,
+                        rx + 3*self.cell_w//10, ry + self.cell_h - 2,
+                        rx + self.cell_w//2, ry + 3*self.cell_h//4,
+                        rx + 7*self.cell_w//10, ry + self.cell_h - 2,
+                        rx + 4*self.cell_w//5, ry + 4*self.cell_h//5,
+                        rx + self.cell_w - 2, ry + 3*self.cell_h//4,
+                        rx + 3*self.cell_w//4, ry + self.cell_h//4,
+                        fill="#FF8000", outline=COLOR_WHITE, width=1.5
+                    )
+                    # Glowing yellow threat indicator / cockpit
+                    self.game_canvas.create_polygon(
+                        rx + self.cell_w//2, ry + self.cell_h//5,
+                        rx + 3*self.cell_w//5, ry + self.cell_h//2,
+                        rx + 2*self.cell_w//5, ry + self.cell_h//2,
+                        fill=COLOR_YELLOW, outline=""
+                    )
                 elif cell == "G":
                     # Gem diamond
                     self.game_canvas.create_polygon(
