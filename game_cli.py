@@ -58,7 +58,7 @@ if os.name == 'nt':
         font_info.dwFontSize.Y = 44  # height
         font_info.FontFamily = 48    # FF_DONTCARE
         font_info.FontWeight = 900   # FW_BOLD
-        font_info.FaceName = "Terminal"
+        font_info.FaceName = "Lucida Console"
 
         ctypes.windll.kernel32.SetCurrentConsoleFontEx(
             hStdOut,
@@ -162,7 +162,7 @@ def stop_bg_music():
 char_down = "▼"
 char_gem = "♦"
 char_heart = "♥"
-char_sun = "○"
+char_sun = "☼"
 
 # Game Settings
 gmode = 1 # 1: Levels, 0: Endless

@@ -83,6 +83,7 @@ if exist "bin\bg.exe" if not "%error%"=="0" set /a error=%error%-2
 ping localhost -n 2 >nul
 :play
 copy nul .stop >nul 2>nul
+echo.[DEBUG 1] About to call gam.conf.load
 call :gam.conf.load
 if not "%error%"=="0" call :errors
 echo.Please Set Window Size Now...
@@ -651,6 +652,7 @@ goto :eof
 :: ========== INIT/FINISH ========== ::
 
 :gam.menu
+echo.[DEBUG 4] Inside gam.menu
 set id=0
 call :gam.format
 set /a ywin_tmp=ywin-3
@@ -849,13 +851,20 @@ for /l %%y in (%start%,1,%end%) do (
 )
 ::Clear a starting path (+5) if first map
 set /a ly=y-1
+echo.[DEBUG 8] About to compute ny inside gam.add: y=%y%
 set /a ny=y+5
+echo.[DEBUG 9] Computed ny=%ny%
 for /l %%y in (%ly%,1,%ny%) do (
 	if "%level%"=="1" if not "!x%x%-y%%y!"==" " set x%x%-y%%y= 
 )
 goto :eof
 :gam.format
+echo.[DEBUG 5] Inside gam.format, difficulty=%difficulty%
 ::Choose game settings based off difficulty
+set rows=9
+set viewmax=36
+set prb=10
+set speed=40
 if "%difficulty%"=="1" set rows=13&set viewmax=36&set prb=5&set speed=150
 if "%difficulty%"=="2" set rows=11&set viewmax=36&set prb=7&set speed=80
 if "%difficulty%"=="3" set rows=9&set viewmax=36&set prb=10&set speed=40
@@ -866,12 +875,14 @@ for /f "tokens=2" %%A in ('mode con ^| find "Lines"') do set "window_height=%%A"
 set /a xwin=window_width
 set /a ywin=window_height
 set /a view=window_height-3
-if %view% geq %viewmax% set view=%viewmax%
+if not "%viewmax%"=="" if %view% geq %viewmax% set view=%viewmax%
 set xmax=%rows%
 set ymax=%view%
 set /a pad=(xwin/2)-(xmax/2)-1
 set /a iseven=xwin %% 2
+echo.[DEBUG 6] About to compute mem inside gam.format: viewmax=%viewmax%, rows=%rows%
 set /a mem=viewmax+rows+5
+echo.[DEBUG 7] Computed mem=%mem%
 set sider=&set sidel=&set test=&set test_=&set xside=0
 ::Generate display shortcuts
 for /l %%x in (1,1,%xwin%) do (
@@ -927,6 +938,7 @@ title
 start GaMe.bat
 exit
 :gam.conf.load
+echo.[DEBUG 2] Inside gam.conf.load
 ::Load settings File to memory
 set rwcheck=0
 if not exist "data\settings" call :gam.conf.save
@@ -942,6 +954,7 @@ if not "%rwcheck%"=="%writecheck%" set /a error=%error%+16
 set write_check=%rwcheck%
 goto :eof
 :gam.conf.save
+echo.[DEBUG 3] Inside gam.conf.save
 ::Load settings File to memory
 >data\settings echo.rwcheck=%writecheck%
 >>data\settings echo.mem=%mem%
