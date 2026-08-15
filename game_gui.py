@@ -455,14 +455,29 @@ class GameApp(tk.Tk):
                     active_ebullets.append([ebc, new_ebr])
         self.enemy_bullets = active_ebullets
 
-        # Update Enemies on map
+        # Update Enemies on map (moving side-to-side every 2 ticks towards player_col with difficulty-scaled accuracy)
         if gmode == 1:
+            if not hasattr(self, "tick_count"):
+                self.tick_count = 0
+            self.tick_count += 1
+
+            acc_thresholds = {1: 30, 2: 50, 3: 70, 4: 90}
+            thresh = acc_thresholds[difficulty]
+
             for r in range(len(self.map_rows) - 1, -1, -1):
                 for c in range(self.cols):
                     if self.map_rows[r][c] == "▲":
                         self.map_rows[r][c] = " "
-                        move = random.choice([-1, 0, 1])
-                        new_c = max(0, min(self.cols - 1, c + move))
+                        new_c = c
+                        if self.tick_count % 2 == 0:
+                            if random.randint(0, 99) < thresh:
+                                if c < self.player_col:
+                                    new_c = min(self.cols - 1, c + 1)
+                                elif c > self.player_col:
+                                    new_c = max(0, c - 1)
+                            else:
+                                move = random.choice([-1, 0, 1])
+                                new_c = max(0, min(self.cols - 1, c + move))
                         if random.randint(0, 5) == 0:
                             self.enemy_bullets.append([new_c, r - 1])
                         if r < len(self.map_rows):

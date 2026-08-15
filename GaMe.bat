@@ -170,6 +170,7 @@ set bullet_count=0
 set ebullet_count=0
 set bullets_left=10
 set enemy_spawn_timer=0
+set enemy_tick=0
 set level_goal_row=150
 set xmax=%rows%
 set ymax=%view%
@@ -184,7 +185,7 @@ del .pause 2>nul
 del .stop 2>nul
 ::LOADING BAR
 set tmpside=0
-for /l %%t in (0,2,%xwin%) do set /a tmpside=!tmpside!+1
+for /l %%t in (0,2,!xwin!) do set /a tmpside=!tmpside!+1
 set /a tmpside=!tmpside!-8
 set /a tmpheight=!ywin!-3
 bin\bg.exe fcprint !tmpheight! !tmpside! F "Loading Game..."
@@ -262,25 +263,25 @@ set y_view=%y%
 goto :eof
 
 :gam.update_entities
-if "%gmode%"=="1" (
+if "!gmode!"=="1" (
     rem Player bullet firing logic sets fired=1 if player fires.
     if "!fired!"=="1" (
         set fired=0
         if !bullets_left! gtr 0 (
             set /a bullets_left=!bullets_left!-1
             set /a bullet_count=!bullet_count!+1
-            set "bullet_x[!bullet_count!]=%x%"
-            set "bullet_y[!bullet_count!]=%y%+1"
-            if "%mute%"=="0" start /b "" bin\bg.exe play cache\damage.wav
+            set "bullet_x[!bullet_count!]=!x!"
+            set "bullet_y[!bullet_count!]=!y!+1"
+            if "!mute!"=="0" start /b "" bin\bg.exe play cache\damage.wav
         ) else (
-            if %special% gtr 0 (
-                set /a special=%special%-1
+            if !special! gtr 0 (
+                set /a special=!special!-1
                 set bullets_left=9
                 set /a bullet_count=!bullet_count!+1
-                set "bullet_x[!bullet_count!]=%x%"
-                set "bullet_y[!bullet_count!]=%y%+1"
+                set "bullet_x[!bullet_count!]=!x!"
+                set "bullet_y[!bullet_count!]=!y!+1"
                 call :gam.refresh.icons
-                if "%mute%"=="0" start /b "" bin\bg.exe play cache\boom.wav
+                if "!mute!"=="0" start /b "" bin\bg.exe play cache\boom.wav
             )
         )
     )
@@ -294,7 +295,7 @@ if "%gmode%"=="1" (
         set "x!bx!-y!by!="
         rem Bullet moves down by 3 spaces
         set /a by=!by!+3
-        if !by! gtr %ymax% (
+        if !by! gtr !ymax! (
             rem despawn
         ) else (
             set "hit=0"
@@ -306,24 +307,24 @@ if "%gmode%"=="1" (
                         set "hit=1"
                         set "x!bx!-y!check_y!="
                         if "!cell!"=="%char_gem%" (
-                            set /a score=%score%+(5*%difficulty%)+5
-                            set /a gems=%gems%+1
-                            if "%mute%"=="0" start /b "" bin\bg.exe play cache\gem.wav
+                            set /a score=!score!+(5*!difficulty!)+5
+                            set /a gems=!gems!+1
+                            if "!mute!"=="0" start /b "" bin\bg.exe play cache\gem.wav
                         ) else if "!cell!"=="%char_heart%" (
-                            if not "%lives%"=="10" set /a lives=%lives%+1&call :gam.refresh.icons&if "%mute%"=="0" start /b "" bin\bg.exe play cache\heart.wav
+                            if not "!lives!"=="10" set /a lives=!lives!+1&call :gam.refresh.icons&if "!mute!"=="0" start /b "" bin\bg.exe play cache\heart.wav
                         ) else if "!cell!"=="%char_sun%" (
-                            set /a boom_tot=%boom_tot%+1
-                            if not "%special%"=="5" set /a special=%special%+1&call :gam.refresh.icons&if "%mute%"=="0" start /b "" bin\bg.exe play cache\boom.wav
+                            set /a boom_tot=!boom_tot!+1
+                            if not "!special!"=="5" set /a special=!special!+1&call :gam.refresh.icons&if "!mute!"=="0" start /b "" bin\bg.exe play cache\boom.wav
                         ) else if "!cell!"=="▲" (
-                            set /a score=%score%+1000
+                            set /a score=!score!+1000
                             rem Flag this enemy as hit
                             for /l %%k in (1,1,!enemy_count!) do (
                                 if "!enemy_x[%%k]!"=="!bx!" if "!enemy_y[%%k]!"=="!check_y!" set "enemy_hit[%%k]=1"
                             )
-                            if "%mute%"=="0" start /b "" bin\bg.exe play cache\boom.wav
+                            if "!mute!"=="0" start /b "" bin\bg.exe play cache\boom.wav
                         ) else (
                             set "x!bx!-y!check_y!=."
-                            if "%mute%"=="0" start /b "" bin\bg.exe play cache\damage.wav
+                            if "!mute!"=="0" start /b "" bin\bg.exe play cache\damage.wav
                         )
                     )
                 )
@@ -345,7 +346,7 @@ if "%gmode%"=="1" (
         set /a eby=!ebullet_y[%%i]!
         set "x!ebx!-y!eby!="
         set /a eby=!eby!-2
-        set /a limit=%ymin%-5
+        set /a limit=!ymin!-5
         if !eby! lss !limit! (
             rem despawn
         ) else (
@@ -353,7 +354,7 @@ if "%gmode%"=="1" (
             for /l %%s in (0,1,1) do (
                 set /a check_y=!eby!+%%s
                 if "!hit!"=="0" (
-                    if "!check_y!"=="%y%" if "!ebx!"=="%x%" (
+                    if "!check_y!"=="!y!" if "!ebx!"=="!x!" (
                         set "hit=1"
                         call :gam.damage
                     )
@@ -369,31 +370,34 @@ if "%gmode%"=="1" (
     )
     set "ebullet_count=!eb_idx!"
 
-    rem Update enemies (they scroll up naturally)
+    rem Update enemies (they scroll up naturally, move side-to-side every 2 ticks)
+    set /a enemy_tick=(!enemy_tick!+1) %% 2
+
+    rem Accuracy thresholds based on difficulty: 1=30%, 2=50%, 3=70%, 4=90%
+    set /a acc_thresh=30
+    if "!difficulty!"=="2" set /a acc_thresh=50
+    if "!difficulty!"=="3" set /a acc_thresh=70
+    if "!difficulty!"=="4" set /a acc_thresh=90
+
     set /a e_idx=0
     for /l %%i in (1,1,!enemy_count!) do (
         set /a ex=!enemy_x[%%i]!
         set /a ey=!enemy_y[%%i]!
         set "x!ex!-y!ey!="
 
-        rem Move side-to-side and keep on map
-        set /a rand_move=!random! %% 3
         set /a next_ex=!ex!
-        if "!rand_move!"=="1" set /a next_ex=!ex!-1
-        if "!rand_move!"=="2" set /a next_ex=!ex!+1
-        if !next_ex! lss 1 set "next_ex=1"
-        if !next_ex! gtr %xmax% set "next_ex=%xmax%"
-
-        if %level% lss 10 (
-            if "!next_ex!"=="%x%" (
-                if %x% gtr 1 ( set /a next_ex=%x%-1 ) else ( set /a next_ex=%x%+1 )
+        if "!enemy_tick!"=="0" (
+            set /a rand_acc=!random! %% 100
+            if !rand_acc! lss !acc_thresh! (
+                if !ex! lss !x! set /a next_ex=!ex!+1
+                if !ex! gtr !x! set /a next_ex=!ex!-1
+            ) else (
+                set /a rand_move=!random! %% 3
+                if "!rand_move!"=="1" set /a next_ex=!ex!-1
+                if "!rand_move!"=="2" set /a next_ex=!ex!+1
             )
-        ) else (
-            set /a rand_suicide=!random! %% 10
-            if "!rand_suicide!"=="0" (
-                if !ex! lss %x% set /a next_ex=!ex!+1
-                if !ex! gtr %x% set /a next_ex=!ex!-1
-            )
+            if !next_ex! lss 1 set "next_ex=1"
+            if !next_ex! gtr !xmax! set "next_ex=!xmax!"
         )
         set "ex=!next_ex!"
 
@@ -406,13 +410,13 @@ if "%gmode%"=="1" (
         )
 
         for /f "tokens=*" %%A in ("enemy_hit[%%i]") do set "ehit=!%%A!"
-        if !ey! lss %ymin% (
+        if !ey! lss !ymin! (
             rem despawn
         ) else if "!ehit!"=="1" (
             set "enemy_hit[%%i]="
             rem despawn
         ) else (
-            if "!ey!"=="%y%" if "!ex!"=="%x%" (
+            if "!ey!"=="!y!" if "!ex!"=="!x!" (
                 call :gam.damage
             ) else (
                 set /a e_idx=!e_idx!+1
@@ -429,8 +433,8 @@ if "%gmode%"=="1" (
     if !enemy_spawn_timer! gtr 10 (
         set enemy_spawn_timer=0
         if !enemy_count! lss 3 (
-            set /a rand_spawn=!random! %% %xmax% + 1
-            set /a spawn_y=%ymax%-1
+            set /a rand_spawn=!random! %% !xmax! + 1
+            set /a spawn_y=!ymax!-1
             for /f "tokens=*" %%A in ("x!rand_spawn!-y!spawn_y!") do set "cell=!%%A!"
             if "!cell!"==" " (
                 set /a enemy_count=!enemy_count!+1
@@ -446,25 +450,25 @@ goto :eof
 
 :gam.draw
 ::Write active part of map to screen from memory
-set /a ywin_tmp=%ywin%-1
-set /a pad_tmp=%pad%-2
+set /a ywin_tmp=ywin-1
+set /a pad_tmp=pad-2
 if "!refresh_top!"=="1" bin\bg.exe fcprint 0 0 8 "%test%"
 if "!refresh_top!"=="1" bin\bg.exe fcprint 0 1 4 "%hearts% " D "%boom%"
 if "!refresh_top!"=="1" set refresh_top=0
 set color_stack=
-for /l %%y in (%ymin%,1,%ymax%) do (
-	for /l %%x in (1,1,%xmax%) do (
+for /l %%y in (!ymin!,1,!ymax!) do (
+	for /l %%x in (1,1,!xmax!) do (
 		if "!x%%x-y%%y!"=="%char_heart%" set line%%y=!line%%y!" 4 "%char_heart%" F "
 		if "!x%%x-y%%y!"=="%char_gem%" set line%%y=!line%%y!" A "%char_gem%" F "
 		if "!x%%x-y%%y!"=="%char_sun%" set line%%y=!line%%y!" D "%char_sun%" F "
 		if "!x%%x-y%%y!"=="▲" set line%%y=!line%%y!" C "▲" F "
 		if "!x%%x-y%%y!"=="↑" set line%%y=!line%%y!" E "↑" F "
 		if "!x%%x-y%%y!"=="•" set line%%y=!line%%y!" E "•" F "
-		if %lives% gtr 0 if "%pos%"=="%char_gem%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" A6 "%char_down%" F "
-		if %lives% gtr 0 if "%pos%"=="%char_heart%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" 46 "%char_down%" F "
-		if %lives% gtr 0 if "%pos%"=="%char_sun%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" D6 "%char_down%" F "
-		if %lives% gtr 0 if not "%pos%"=="%char_sun%" if not "%pos%"=="%char_heart%" if not "%pos%"=="%char_gem%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" 6 "%char_down%" F "
-		if %lives% leq 0 if "!x%%x-y%%y!"=="X" set line%%y=!line%%y!" C4 "X" F "
+		if !lives! gtr 0 if "%pos%"=="%char_gem%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" A6 "%char_down%" F "
+		if !lives! gtr 0 if "%pos%"=="%char_heart%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" 46 "%char_down%" F "
+		if !lives! gtr 0 if "%pos%"=="%char_sun%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" D6 "%char_down%" F "
+		if !lives! gtr 0 if not "%pos%"=="%char_sun%" if not "%pos%"=="%char_heart%" if not "%pos%"=="%char_gem%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" 6 "%char_down%" F "
+		if !lives! leq 0 if "!x%%x-y%%y!"=="X" set line%%y=!line%%y!" C4 "X" F "
 		if not "!x%%x-y%%y!"=="%char_heart%" if not "!x%%x-y%%y!"=="%char_gem%" if not "!x%%x-y%%y!"=="%char_sun%" if not "!x%%x-y%%y!"=="%char_down%" if not "!x%%x-y%%y!"=="▲" if not "!x%%x-y%%y!"=="↑" if not "!x%%x-y%%y!"=="•" if not "!x%%x-y%%y!"=="X" set line%%y=!line%%y!!x%%x-y%%y!
 	)
 	set color_stack=!color_stack! 8 "%sidel%" F "│!line%%y!│" 8 "\n"
@@ -473,15 +477,15 @@ for /l %%y in (%ymin%,1,%ymax%) do (
 ::bin\bg.exe print !color_stack!
 bin\bg.exe fcprint 1 0 !color_stack!
 ::Write score and level
-if "%gmode%"=="1" (
+if "!gmode!"=="1" (
 	bin\bg.exe fcprint !ywin_tmp! 0 F "SCORE:%score% LVL:%level% " A "%char_gem%" F ":%gems% [AMMO:%bullets_left%]"
 ) else (
 	bin\bg.exe fcprint !ywin_tmp! 0 F "SCORE:%score% LVL:%level% " A "%char_gem%" F ":%gems% "
 )
 ::Erase last row from memory
-set /a ly=%ymin%-1
-for /l %%x in (1,1,%xmax%) do (
-	set x%%x-y%ly%=
+set /a ly=ymin-1
+for /l %%x in (1,1,!xmax!) do (
+	set x%%x-y!ly!=
 )
 set theory=
 goto :eof
@@ -611,11 +615,11 @@ goto :eof
 call :gam.refresh.icons
 if "%special%"=="0" goto :eof
 set /a special=%special%-1
-set /a nx=%x%+3
-set /a ny=%y%+4
-set /a lx=%x%-3
-for /l %%y in (%y%,1,%ny%) do (
-	for /l %%x in (%lx%,1,%nx%) do (
+set /a nx=x+3
+set /a ny=y+4
+set /a lx=x-3
+for /l %%y in (!y!,1,!ny!) do (
+	for /l %%x in (!lx!,1,!nx!) do (
 		if not "!x%%x-y%%y!"==" " if not "!x%%x-y%%y!"=="%char_gem%" if not "!x%%x-y%%y!"=="%char_heart%" if not "!x%%x-y%%y!"=="%char_sun%" set x%%x-y%%y=.
 	)
 )
@@ -758,28 +762,28 @@ pause >nul
 goto :eof
 :gam.load
 ::Add level for each map loaded
-set /a level=%level%+1
-set /a level_=%level_%+1
-if "%level_%"=="10" set /a prb=%prb%+1&set level_=0
-if "%level:~-2%"=="00" set prb_=%prb%&set prb=-1&set heartSeed=180&set gemSeed=500&set boomSeed=64
-if "%level:~-2%"=="01" set prb=%prb_%&set heartSeed=101&set gemSeed=209&set boomSeed=1
-if "%level:~-2%"=="50" set prb_=%prb%&set prb=-1&set heartSeed=120&set gemSeed=300&set boomSeed=32
-if "%level:~-2%"=="51" set prb=%prb_%&set heartSeed=101&set gemSeed=209&set boomSeed=1
+set /a level=level+1
+set /a level_=level_+1
+if "!level_!"=="10" set /a prb=prb+1&set level_=0
+if "!level:~-2!"=="00" set prb_=prb&set prb=-1&set heartSeed=180&set gemSeed=500&set boomSeed=64
+if "!level:~-2!"=="01" set prb=prb_&set heartSeed=101&set gemSeed=209&set boomSeed=1
+if "!level:~-2!"=="50" set prb_=prb&set prb=-1&set heartSeed=120&set gemSeed=300&set boomSeed=32
+if "!level:~-2!"=="51" set prb=prb_&set heartSeed=101&set gemSeed=209&set boomSeed=1
 ::Generate probabilities
 for /l %%p in (0,1,9) do (
 	set /a prb%%p=%%p*100+!prb!
 )
 ::Generate Map based off probabilities and output to map file
-for /l %%y in (%start%,1,%end%) do (
-	for /l %%x in (1,1,%xmax%) do (
+for /l %%y in (!start!,1,!end!) do (
+	for /l %%x in (1,1,!xmax!) do (
 		set /a num=!random! %% 1000
 		set char= 
 		set "is_landing=0"
-		if "%gmode%"=="1" (
+		if "!gmode!"=="1" (
 			if "%%y"=="150" (
 				set "is_landing=1"
 				set "char=═"
-				set /a mid_col=%xmax%/2
+				set /a mid_col=!xmax!/2
 				if "%%x"=="!mid_col!" set "char= "
 			) else if %%y gtr 140 (
 				set "is_landing=1"
@@ -787,19 +791,19 @@ for /l %%y in (%start%,1,%end%) do (
 			)
 		)
 		if "!is_landing!"=="0" (
-			if !num! geq 0 if !num! leq %boomSeed% set char=%char_sun%
-			if !num! geq 100 if !num! leq %heartSeed% set char=%char_heart%
-			if !num! geq 200 if !num! leq %gemSeed% set char=%char_gem%
-			if !num! geq 50 if !num! leq %prb0% set char=░
-			if !num! geq 150 if !num! leq %prb1% set char=@
-			if !num! geq 250 if !num! leq %prb2% set char=#
-			if !num! geq 300 if !num! leq %prb3% set char=▒
-			if !num! geq 400 if !num! leq %prb4% set char=▓
-			if !num! geq 500 if !num! leq %prb5% set char=█
-			if !num! geq 600 if !num! leq %prb6% set char=▄
-			if !num! geq 700 if !num! leq %prb7% set char=▀
-			if !num! geq 800 if !num! leq %prb8% set char=▌
-			if !num! geq 900 if !num! leq %prb9% set char=▐
+			if !num! geq 0 if !num! leq !boomSeed! set char=%char_sun%
+			if !num! geq 100 if !num! leq !heartSeed! set char=%char_heart%
+			if !num! geq 200 if !num! leq !gemSeed! set char=%char_gem%
+			if !num! geq 50 if !num! leq !prb0! set char=░
+			if !num! geq 150 if !num! leq !prb1! set char=@
+			if !num! geq 250 if !num! leq !prb2! set char=#
+			if !num! geq 300 if !num! leq !prb3! set char=▒
+			if !num! geq 400 if !num! leq !prb4! set char=▓
+			if !num! geq 500 if !num! leq !prb5! set char=█
+			if !num! geq 600 if !num! leq !prb6! set char=▄
+			if !num! geq 700 if !num! leq !prb7! set char=▀
+			if !num! geq 800 if !num! leq !prb8! set char=▌
+			if !num! geq 900 if !num! leq !prb9! set char=▐
 		)
 		set x%%x-y%%y=!char!
 	)
@@ -807,8 +811,8 @@ for /l %%y in (%start%,1,%end%) do (
 ::Clear a starting path (+5) if first map
 set /a ly=y-1
 set /a ny=y+5
-for /l %%y in (%ly%,1,%ny%) do (
-	if "%level%"=="1" if not "!x%x%-y%%y!"==" " set x%x%-y%%y= 
+for /l %%y in (!ly!,1,!ny!) do (
+	if "!level!"=="1" if not "!x%x%-y%%y!"==" " set x%x%-y%%y=
 )
 goto :eof
 :gam.format
@@ -831,19 +835,19 @@ set /a iseven=%xwin% %% 2
 set /a mem=viewmax+rows+5
 set sider=&set sidel=&set test=&set xside=0
 ::Generate display shortcuts
-for /l %%x in (1,1,%xwin%) do (
+for /l %%x in (1,1,!xwin!) do (
 	set test=░!test!
 )
-if "%iseven%"=="1" for /l %%x in (1,1,%pad%) do (
+if "%iseven%"=="1" for /l %%x in (1,1,!pad!) do (
 	set sidel=░!sidel!
 	set sider=░!sider!
 	set /a xside=!xside!+1
 )
 if "%iseven%"=="0" (
-	for /l %%x in (2,1,%pad%) do (
+	for /l %%x in (2,1,!pad!) do (
 		set sidel=░!sidel!
 	)
-	for /l %%x in (1,1,%pad%) do (
+	for /l %%x in (1,1,!pad!) do (
 		set sider=░!sider!
 		set /a xside=!xside!+1
 	)

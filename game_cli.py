@@ -179,44 +179,41 @@ def save_local_score(name, fs, score_val, bonus, lvl, diff, gms, dmg):
         pass
 
 def draw_header_title():
-    # A beautiful centered retro title exactly matching Batch aesthetics
-    print(f"{C_GREEN} _______________________________________ {C_RESET}")
-    print(f"{C_GREEN}│                                       │{C_RESET}")
-    print(f"{C_GREEN}│          {C_BOLD}{C_CYAN} GEMS AND METEORS {C_RESET}{C_GREEN}           │{C_RESET}")
-    print(f"{C_GREEN}│             Python Edition            │{C_RESET}")
-    print(f"{C_GREEN}│_______________________________________│{C_RESET}")
+    # Exact replica of Batch version's top banner
+    print(f"{C_GREEN}░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░{C_RESET}")
+    print(f"{C_GREEN}░░░░░░{C_RESET} {C_BG_BLUE}{C_BOLD}{C_GREEN}                    {C_RESET} {C_GREEN}░░░░░░{C_RESET}")
+    print(f"{C_GREEN}░░░░░░{C_RESET} {C_BG_BLUE}{C_BOLD}{C_GREEN}  Gems{C_RESET} {C_BG_BLUE}{C_WHITE}and{C_RESET} {C_BG_BLUE}{C_BOLD}{C_WHITE}Meteors  {C_RESET} {C_GREEN}░░░░░░{C_RESET}")
+    print(f"{C_GREEN}░░░░░░{C_RESET} {C_BG_BLUE}{C_BOLD}{C_GREEN}                    {C_RESET} {C_GREEN}░░░░░░{C_RESET}")
 
 def main_menu():
     global gmode, char_down, difficulty, MUTE
     sel = 1
-    total_options = 7
+    total_options = 8
 
     while True:
         os.system('cls' if os.name == 'nt' else 'clear')
         draw_header_title()
 
         mode_str = "Levels" if gmode == 1 else "Endless"
-        mute_str = "Muted" if MUTE else "Sound ON"
+        mute_val = 1 if MUTE else 0
 
         options = [
-            "Start Game",
-            f"Game Mode: {mode_str}",
+            "Start GaM",
+            f"Mode: {mode_str}",
+            "Scores",
+            "Controls",
+            "Goals",
+            f"Muted: {mute_val}",
             f"Difficulty: {difficulty}",
-            f"Sound: {mute_str}",
-            "High Scores",
-            "Controls & Help",
-            "Quit Game"
+            "Quit"
         ]
 
-        print(f"\n{C_BOLD}{C_YELLOW}  ===== MAIN MENU ====={C_RESET}\n")
+        print()
         for i, opt in enumerate(options, 1):
-            cursor = f"{C_GREEN} ► {C_RESET}" if i == sel else "   "
-            text_color = C_BOLD + C_WHITE if i == sel else C_WHITE
-            # Align perfectly centered on 43 cols
-            aligned_opt = f"  {cursor}{text_color}{opt:<28}{C_RESET}"
-            print(aligned_opt)
-
-        print(f"\n{C_CYAN}  [Arrows/WASD: Move, Space/Enter: Confirm]{C_RESET}")
+            cursor = "►" if i == sel else " "
+            # Batch menu option styling with dark grey background block
+            text = f"{cursor} {opt:<19}"
+            print(f"{C_GREEN}░░░░░░░{C_RESET} \033[48;5;238m\033[38;5;15m{C_BOLD}{text}{C_RESET}")
 
         # Input loop
         while True:
@@ -236,20 +233,39 @@ def main_menu():
             elif sel == 2:
                 gmode = 1 - gmode
             elif sel == 3:
-                difficulty = difficulty + 1 if difficulty < 4 else 1
+                show_high_scores()
             elif sel == 4:
+                show_controls()
+            elif sel == 5:
+                show_goals()
+            elif sel == 6:
                 MUTE = not MUTE
                 if MUTE:
                     stop_bg_music()
                 else:
                     start_bg_music()
-            elif sel == 5:
-                show_high_scores()
-            elif sel == 6:
-                show_controls()
             elif sel == 7:
+                difficulty = difficulty + 1 if difficulty < 4 else 1
+            elif sel == 8:
                 stop_bg_music()
                 sys.exit(0)
+
+def show_goals():
+    os.system('cls' if os.name == 'nt' else 'clear')
+    print(f"\n{C_BOLD}{C_WHITE}             GOALS             {C_RESET}")
+    print(f"  Avoid all Meteors")
+    print(f"  Collect Items:")
+    print(f"  - {C_GREEN}Gems {char_gem}{C_RESET}     : +10 points")
+    print(f"  - {C_RED}Health {char_heart}{C_RESET}   : +1 life")
+    print(f"  - {C_MAGENTA}Shields {char_sun}{C_RESET}  : +1 SHIELD")
+    print(f"\n  Holding {C_MAGENTA}{char_sun}{C_RESET} will lower damage")
+    print(f"  Firing will use 1 {C_MAGENTA}{char_sun}{C_RESET} to")
+    print(f"  destroy meteors ahead")
+    print("\n  Press any key to continue...")
+    while True:
+        if get_key_pressed() is not None:
+            break
+        time.sleep(0.05)
 
 def show_controls():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -550,14 +566,25 @@ def run_game():
                     active_ebullets.append([ebc, new_ebr])
         enemy_bullets = active_ebullets
 
-        # Update Enemies on map (scrolling up naturally, moving side-to-side, and shooting UP)
+        # Update Enemies on map (scrolling up naturally, moving side-to-side every 2 ticks towards player_col)
         if gmode == 1:
+            acc_thresholds = {1: 30, 2: 50, 3: 70, 4: 90}
+            thresh = acc_thresholds[difficulty]
+
             for r in range(view_height - 1, -1, -1):
                 for c in range(cols):
                     if map_rows[r][c] == "▲":
                         map_rows[r][c] = " "
-                        move = random.choice([-1, 0, 1])
-                        new_c = max(0, min(cols - 1, c + move))
+                        new_c = c
+                        if tick_count % 2 == 0:
+                            if random.randint(0, 99) < thresh:
+                                if c < player_col:
+                                    new_c = min(cols - 1, c + 1)
+                                elif c > player_col:
+                                    new_c = max(0, c - 1)
+                            else:
+                                move = random.choice([-1, 0, 1])
+                                new_c = max(0, min(cols - 1, c + move))
                         if random.randint(0, 5) == 0:
                             enemy_bullets.append([new_c, r - 1])
                         if r < view_height:
