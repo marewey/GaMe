@@ -192,13 +192,15 @@ bin\bg.exe fcprint !tmpheight! !tmpside! F "Loading Game..."
 set /a tmpheight=!tmpheight!+1
 set /a lbs=120-window_width
 set /a xwin_tmp=!xwin!-2
-for /l %%a in (1,1,%xwin_tmp%) do (
+for /f "tokens=1" %%W in ("!xwin_tmp!") do (
+	for /l %%a in (1,1,%%W) do (
 	set /a sleep_=%%a / 2 + !random! %% lbs
 	bin\bg.exe fcprint !tmpheight! %%a F "█"
 	bin\bg.exe sleep !sleep_!
 	if "%%a"=="10" call :script.music silent
 	if "%%a"=="13" call :gam.refresh.icons
-	if "%%a"=="16" call :gam.load
+		if "%%a"=="16" call :gam.load
+	)
 )
 set ingame=1
 set tmpside=
@@ -250,7 +252,7 @@ if "%input%"=="13" (
 )
 if "%input%"=="27" call :gam.music -1&set pausetimestart=%time%&call :gam.pause&title GaMe&set refresh_top=1&call :gam.music 1
 set "lpos=!pos!"
-for /f "tokens=*" %%A in ("x!x!-y!y!") do set "pos=!%%A!"
+for /f "tokens=1,2" %%A in ("!x! !y!") do set "pos=!x%%A-y%%B!"
 if not "!lpos!"==" " if not "!lpos!"=="." if not "!lpos!"=="" if not "!lpos!"=="%char_gem%" if not "!lives!"=="10" if not "!special!"=="5" call :gam.refresh.icons
 set /a rows_=rows+1
 if "!x!"=="0" set x=!rows!
@@ -303,7 +305,7 @@ if "!gmode!"=="1" (
                 for /l %%s in (0,1,2) do (
                     set /a check_y=!by!-%%s
                     if "!hit!"=="0" (
-                        for /f "tokens=*" %%A in ("x!bx!-y!check_y!") do set "cell=!%%A!"
+                        for /f "tokens=1,2" %%C in ("!bx! !check_y!") do set "cell=!x%%C-y%%D!"
                         if not "!cell!"==" " if not "!cell!"=="." if not "!cell!"="" (
                             set "hit=1"
                             set "x!bx!-y!check_y!="
@@ -312,7 +314,7 @@ if "!gmode!"=="1" (
                                 set /a gems=gems+1
                                 if "!mute!"=="0" start /b "" bin\bg.exe play cache\gem.wav
                             ) else if "!cell!"=="%char_heart%" (
-                                if not "!lives!"=="10" set /a lives=lives+1&call :gam.refresh.icons&if "!mute!"=="0" start /b "" bin\bg.exe play cache\boom.wav
+                                if not "!lives!"=="10" set /a lives=lives+1&call :gam.refresh.icons&if "!mute!"=="0" start /b "" bin\bg.exe play cache\heart.wav
                             ) else if "!cell!"=="%char_sun%" (
                                 set /a boom_tot=boom_tot+1
                                 if not "!special!"=="5" set /a special=special+1&call :gam.refresh.icons&if "!mute!"=="0" start /b "" bin\bg.exe play cache\boom.wav
@@ -368,7 +370,7 @@ if "!gmode!"=="1" (
                 if "!hit!"=="0" (
                     set /a eb_idx=!eb_idx!+1
                     set "ebullet_x[!eb_idx!]=!ebx!"
-                    set "ebullet_y[!ebullet_count!]=!eby!"
+                    set "ebullet_y[!eb_idx!]=!eby!"
                     set "x!ebx!-y!eby!=↑"
                 )
             )
@@ -416,7 +418,7 @@ if "!gmode!"=="1" (
                 set "ebullet_y[!ebullet_count!]=!ey!-1"
             )
 
-            for /f "tokens=*" %%A in ("enemy_hit[%%i]") do set "ehit=!%%A!"
+            for /f "tokens=1" %%H in ("%%i") do set "ehit=!enemy_hit[%%H]!"
             if !ey! lss !ymin! (
                 rem despawn
             ) else if "!ehit!"=="1" (
@@ -443,7 +445,7 @@ if "!gmode!"=="1" (
         if !enemy_count! lss 3 (
             set /a rand_spawn=!random! %% !xmax! + 1
             set /a spawn_y=!ymax!-1
-            for /f "tokens=*" %%A in ("x!rand_spawn!-y!spawn_y!") do set "cell=!%%A!"
+            for /f "tokens=1,2" %%S in ("!rand_spawn! !spawn_y!") do set "cell=!x%%S-y%%T!"
             if "!cell!"==" " (
                 set /a enemy_count=!enemy_count!+1
                 set "enemy_x[!enemy_count!]=!rand_spawn!"
@@ -473,10 +475,10 @@ for /f "tokens=1,2,3" %%A in ("!ymin! !ymax! !xmax!") do (
 			if "!x%%x-y%%y!"=="▲" set line%%y=!line%%y!" C "▲" F "
 			if "!x%%x-y%%y!"=="↑" set line%%y=!line%%y!" E "↑" F "
 			if "!x%%x-y%%y!"=="•" set line%%y=!line%%y!" E "•" F "
-			if !lives! gtr 0 if "%pos%"=="%char_gem%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" A6 "%char_down%" F "
-			if !lives! gtr 0 if "%pos%"=="%char_heart%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" 46 "%char_down%" F "
-			if !lives! gtr 0 if "%pos%"=="%char_sun%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" D6 "%char_down%" F "
-			if !lives! gtr 0 if not "%pos%"=="%char_sun%" if not "%pos%"=="%char_heart%" if not "%pos%"=="%char_gem%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" 6 "%char_down%" F "
+			if !lives! gtr 0 if "!pos!"=="%char_gem%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" A6 "%char_down%" F "
+			if !lives! gtr 0 if "!pos!"=="%char_heart%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" 46 "%char_down%" F "
+			if !lives! gtr 0 if "!pos!"=="%char_sun%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" D6 "%char_down%" F "
+			if !lives! gtr 0 if not "!pos!"=="%char_sun%" if not "!pos!"=="%char_heart%" if not "!pos!"=="%char_gem%" if "!x%%x-y%%y!"=="%char_down%" set line%%y=!line%%y!" 6 "%char_down%" F "
 			if !lives! leq 0 if "!x%%x-y%%y!"=="X" set line%%y=!line%%y!" C4 "X" F "
 			if not "!x%%x-y%%y!"=="%char_heart%" if not "!x%%x-y%%y!"=="%char_gem%" if not "!x%%x-y%%y!"=="%char_sun%" if not "!x%%x-y%%y!"=="%char_down%" if not "!x%%x-y%%y!"=="▲" if not "!x%%x-y%%y!"=="↑" if not "!x%%x-y%%y!"=="•" if not "!x%%x-y%%y!"=="X" set line%%y=!line%%y!!x%%x-y%%y!
 		)
@@ -543,11 +545,11 @@ if "%gmode%"=="1" (
 ::Detect if at the end of map in memory
 if "%end%"=="%ymax%" call :gam.add
 ::If touching gems/hearts/suns add stuff
-if "%pos%"=="%char_gem%" call :gam.add.gem&goto :eof
-if "%pos%"=="%char_heart%" call :gam.add.heart&goto :eof
-if "%pos%"=="%char_sun%" call :gam.add.boom&goto :eof
+if "!pos!"=="%char_gem%" call :gam.add.gem&goto :eof
+if "!pos!"=="%char_heart%" call :gam.add.heart&goto :eof
+if "!pos!"=="%char_sun%" call :gam.add.boom&goto :eof
 ::If touching anything else, lose a life.
-if not "%pos%"==" " if not "%pos%"=="." if not "%pos%"=="" if not "%pos%"=="\xe2\x96\xb2" if not "%pos%"=="\xe2\x80\xa2" if not "%pos%"=="\xe2\x86\x91" call :gam.damage
+if not "!pos!"==" " if not "!pos!"=="." if not "!pos!"=="" if not "!pos!"=="▲" if not "!pos!"=="•" if not "!pos!"=="↑" call :gam.damage
 if %lives% leq 0 set /a ymin=!ymin!-1&set /a ymax=!ymax!-1&goto :gam.gameover
 goto :eof
 
@@ -828,7 +830,7 @@ set /a ny=y+5
 for /f "tokens=1,2" %%A in ("!ly! !ny!") do (
 	for /l %%y in (%%A,1,%%B) do (
 		if "!level!"=="1" (
-			for /f "tokens=*" %%C in ("x!x!-y%%y") do set "cell=!%%C!"
+			for /f "tokens=1" %%C in ("!x!") do set "cell=!x%%C-y%%y!"
 			if not "!cell!"==" " set "x!x!-y%%y= "
 		)
 	)

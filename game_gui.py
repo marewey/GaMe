@@ -78,15 +78,12 @@ class GameApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("GaMe - Graphical Edition")
-        try:
-            self.attributes("-fullscreen", True)
-        except Exception:
-            self.state("zoomed")
+        self.geometry("600x800")
+        self.resizable(False, False)
         self.configure(bg=COLOR_BG)
 
-        # Get actual screen dimensions for full-screen centering
-        self.screen_w = self.winfo_screenwidth()
-        self.screen_h = self.winfo_screenheight()
+        self.screen_w = 600
+        self.screen_h = 800
 
         # Star Background Setup
         self.stars = [[random.randint(0, self.screen_w), random.randint(0, self.screen_h), random.uniform(1, 3.5)] for _ in range(120)]
