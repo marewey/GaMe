@@ -688,13 +688,13 @@ def run_game():
 
         # RENDER FRAME
         frame_buffer = []
-        pad_size = 5
-        sidebar = " " * pad_size
+        bg_side = f"{C_GREEN}░░░░░░░{C_RESET}"
 
         # Top Bar
         hearts_str = f"{C_RED}{char_heart * lives}{C_RESET}" + f"{C_WHITE}_{C_RESET}" * (10 - lives)
         shield_str = f"{C_CYAN}{char_sun * special}{C_RESET}" + f"{C_WHITE}_{C_RESET}" * (5 - special)
-        frame_buffer.append(f"\n{sidebar}{C_BOLD}{C_WHITE} Lives: {hearts_str}  Shields: {shield_str}{C_RESET}\n")
+        frame_buffer.append(f"{draw_background_pattern()}\n")
+        frame_buffer.append(f"{bg_side}{C_BOLD}{C_WHITE} Lives: {hearts_str}  Shields: {shield_str}{C_RESET}{bg_side}\n")
 
         # Draw map
         for r in range(view_height):
@@ -736,12 +736,12 @@ def run_game():
                         line_parts.append(cell)
 
             middle_map = "".join(line_parts)
-            frame_buffer.append(f"{sidebar}{C_WHITE}│{C_RESET}{middle_map}{C_WHITE}│{C_RESET}\n")
+            frame_buffer.append(f"{bg_side}{C_WHITE}│{C_RESET}{middle_map}{C_WHITE}│{C_RESET}{bg_side}\n")
 
         # Bottom Bar
         ammo_str = f" [Ammo: {bullets_left}]" if gmode == 1 else ""
         gmode_str = "Levels" if gmode == 1 else "Endless"
-        frame_buffer.append(f"{sidebar}{C_BOLD}{C_GREEN}Score: {score}  Level: {level} ({gmode_str}){ammo_str}{C_RESET}\n")
+        frame_buffer.append(f"{bg_side}{C_BOLD}{C_GREEN}Score: {score}  Level: {level} ({gmode_str}){ammo_str}{C_RESET}{bg_side}\n")
 
         sys.stdout.write("\033[H" + "".join(frame_buffer))
         sys.stdout.flush()

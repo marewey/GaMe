@@ -213,11 +213,17 @@ set tptC=0
 set tss=%time%
 :a
 bin\bg.exe Cursor 0
+echo [DEBUG 1] Inside main loop :a, calling :gam.input
 call :gam.input
+echo [DEBUG 2] Returned from :gam.input, calling :gam.usr
 call :gam.usr
+echo [DEBUG 3] Returned from :gam.usr, calling :gam.update_entities
 call :gam.update_entities
+echo [DEBUG 4] Returned from :gam.update_entities, calling :gam.draw
 call :gam.draw
+echo [DEBUG 5] Returned from :gam.draw, calling :gam.action
 call :gam.action
+echo [DEBUG 6] Returned from :gam.action
 goto :a
 :gam.input
 set last_input=%input%
@@ -228,6 +234,7 @@ set input=%errorlevel%
 if "%ingame%"=="1" if not "%speed%"=="0" bin\bg.exe Sleep %speed%
 goto :eof
 :gam.usr
+echo [DEBUG 7] Inside :gam.usr
 ::Move User along the map
 ::Take input and process
 set "x!x!-y!y!="
@@ -265,6 +272,7 @@ set y_view=%y%
 goto :eof
 
 :gam.update_entities
+echo [DEBUG 8] Inside :gam.update_entities
 if "!gmode!"=="1" (
     rem Player bullet firing logic sets fired=1 if player fires.
     if "!fired!"=="1" (
@@ -437,12 +445,11 @@ if "!gmode!"=="1" (
         )
     )
     set "enemy_count=!e_idx!"
-
-    rem Enemies disabled temporarily
 )
 goto :eof
 
 :gam.draw
+echo [DEBUG 9] Inside :gam.draw
 ::Write active part of map to screen from memory
 set /a ywin_tmp=ywin-1
 set /a pad_tmp=pad-2
@@ -813,6 +820,9 @@ for /f "tokens=1,2,3" %%A in ("!start! !end! !xmax!") do (
 	)
 )
 ::Clear a starting path (+5) if first map
+if not defined y set "y=1"
+if not defined level set "level=1"
+if not defined x set "x=1"
 set /a ly=y-1
 set /a ny=y+5
 for /f "tokens=1,2" %%A in ("!ly! !ny!") do (
