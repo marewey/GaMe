@@ -201,16 +201,26 @@ def save_local_score(name, fs, score_val, bonus, lvl, diff, gms, dmg):
     except Exception:
         pass
 
-def draw_background_pattern():
-    # Green background texture exactly matching Batch's %test%
-    return f"{C_GREEN}{'░' * 43}{C_RESET}"
+def get_screen_dimensions():
+    term_cols, term_rows = shutil.get_terminal_size((80, 25))
+    return max(43, term_cols), max(25, term_rows)
+
+def draw_background_pattern(width=None):
+    if width is None:
+        width, _ = get_screen_dimensions()
+    return f"{C_GREEN}{'░' * width}{C_RESET}"
 
 def draw_header_title():
-    # Exact replica of Batch version's top banner
-    print(f"{C_GREEN}░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░{C_RESET}")
-    print(f"{C_GREEN}░░░░░░{C_RESET}\033[48;5;28m\033[38;5;10m{C_BOLD}                    {C_RESET}{C_GREEN}░░░░░░{C_RESET}")
-    print(f"{C_GREEN}░░░░░░{C_RESET}\033[48;5;28m\033[38;5;10m{C_BOLD}  Gems\033[38;5;7m and \033[38;5;15mMeteors  {C_RESET}{C_GREEN}░░░░░░{C_RESET}")
-    print(f"{C_GREEN}░░░░░░{C_RESET}\033[48;5;28m\033[38;5;10m{C_BOLD}                    {C_RESET}{C_GREEN}░░░░░░{C_RESET}")
+    term_cols, _ = get_screen_dimensions()
+    pad_left = (term_cols - 20) // 2
+    pad_right = term_cols - 20 - pad_left
+    left_side = f"{C_GREEN}{'░' * pad_left}{C_RESET}"
+    right_side = f"{C_GREEN}{'░' * pad_right}{C_RESET}"
+
+    print(draw_background_pattern(term_cols))
+    print(f"{left_side}\033[48;5;28m\033[38;5;10m{C_BOLD}                    {C_RESET}{right_side}")
+    print(f"{left_side}\033[48;5;28m\033[38;5;10m{C_BOLD}  Gems\033[38;5;7m and \033[38;5;15mMeteors  {C_RESET}{right_side}")
+    print(f"{left_side}\033[48;5;28m\033[38;5;10m{C_BOLD}                    {C_RESET}{right_side}")
 
 def main_menu():
     global gmode, char_down, difficulty, MUTE
@@ -218,9 +228,10 @@ def main_menu():
     total_options = 8
 
     while True:
+        term_cols, term_rows = get_screen_dimensions()
         os.system('cls' if os.name == 'nt' else 'clear')
         draw_header_title()
-        print(f"{C_GREEN}░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░{C_RESET}")
+        print(draw_background_pattern(term_cols))
 
         mode_str = "Levels" if gmode == 1 else "Endless"
         mute_val = 1 if MUTE else 0
@@ -236,16 +247,20 @@ def main_menu():
             "Quit"
         ]
 
+        pad_left = (term_cols - 20) // 2
+        pad_right = term_cols - 20 - pad_left
+        left_side = f"{C_GREEN}{'░' * pad_left}{C_RESET}"
+        right_side = f"{C_GREEN}{'░' * pad_right}{C_RESET}"
+
         for i, opt in enumerate(options, 1):
             cursor = "►" if i == sel else " "
-            # Exactly 20 chars inside dark grey block to form clean rectangle
             text = f"{cursor} {opt}"
             padded_text = f"{text:<20}"
-            print(f"{C_GREEN}░░░░░░░{C_RESET}\033[48;5;238m\033[38;5;15m{C_BOLD}{padded_text}{C_RESET}{C_GREEN}░░░░░░░░░░░░░░░░{C_RESET}")
+            print(f"{left_side}\033[48;5;238m\033[38;5;15m{C_BOLD}{padded_text}{C_RESET}{right_side}")
 
-        # Fill remaining lines to match Batch menu height
-        print(f"{C_GREEN}░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░{C_RESET}")
-        print(f"{C_GREEN}░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░{C_RESET}")
+        lines_drawn = 4 + 1 + len(options)
+        for _ in range(max(0, term_rows - lines_drawn - 1)):
+            print(draw_background_pattern(term_cols))
 
         # Input loop
         while True:
@@ -687,14 +702,25 @@ def run_game():
             return
 
         # RENDER FRAME
+        term_cols, term_rows = get_screen_dimensions()
+        map_width = cols + 2
+        pad_left = (term_cols - map_width) // 2
+        pad_right = term_cols - map_width - pad_left
+        left_side = f"{C_GREEN}{'░' * pad_left}{C_RESET}"
+        right_side = f"{C_GREEN}{'░' * pad_right}{C_RESET}"
+
         frame_buffer = []
-        bg_side = f"{C_GREEN}░░░░░░░{C_RESET}"
 
         # Top Bar
         hearts_str = f"{C_RED}{char_heart * lives}{C_RESET}" + f"{C_WHITE}_{C_RESET}" * (10 - lives)
         shield_str = f"{C_CYAN}{char_sun * special}{C_RESET}" + f"{C_WHITE}_{C_RESET}" * (5 - special)
-        frame_buffer.append(f"{draw_background_pattern()}\n")
-        frame_buffer.append(f"{bg_side}{C_BOLD}{C_WHITE} Lives: {hearts_str}  Shields: {shield_str}{C_RESET}{bg_side}\n")
+        top_bar_content = f" Lives: {hearts_str}  Shields: {shield_str}"
+        raw_top_len = 8 + 10 + 11 + 5
+        top_pad_left = (term_cols - raw_top_len) // 2
+        top_pad_right = term_cols - raw_top_len - top_pad_left
+
+        frame_buffer.append(f"{draw_background_pattern(term_cols)}\n")
+        frame_buffer.append(f"{C_GREEN}{'░'*top_pad_left}{C_RESET}{C_BOLD}{C_WHITE}{top_bar_content}{C_RESET}{C_GREEN}{'░'*top_pad_right}{C_RESET}\n")
 
         # Draw map
         for r in range(view_height):
@@ -736,12 +762,20 @@ def run_game():
                         line_parts.append(cell)
 
             middle_map = "".join(line_parts)
-            frame_buffer.append(f"{bg_side}{C_WHITE}│{C_RESET}{middle_map}{C_WHITE}│{C_RESET}{bg_side}\n")
+            frame_buffer.append(f"{left_side}{C_WHITE}│{C_RESET}{middle_map}{C_WHITE}│{C_RESET}{right_side}\n")
 
         # Bottom Bar
         ammo_str = f" [Ammo: {bullets_left}]" if gmode == 1 else ""
         gmode_str = "Levels" if gmode == 1 else "Endless"
-        frame_buffer.append(f"{bg_side}{C_BOLD}{C_GREEN}Score: {score}  Level: {level} ({gmode_str}){ammo_str}{C_RESET}{bg_side}\n")
+        bot_bar_content = f"Score: {score}  Level: {level} ({gmode_str}){ammo_str}"
+        raw_bot_len = len(f"Score: {score}  Level: {level} ({gmode_str}){ammo_str}")
+        bot_pad_left = (term_cols - raw_bot_len) // 2
+        bot_pad_right = term_cols - raw_bot_len - bot_pad_left
+        frame_buffer.append(f"{C_GREEN}{'░'*bot_pad_left}{C_RESET}{C_BOLD}{C_GREEN}{bot_bar_content}{C_RESET}{C_GREEN}{'░'*bot_pad_right}{C_RESET}\n")
+
+        lines_drawn = 2 + view_height + 1
+        for _ in range(max(0, term_rows - lines_drawn - 1)):
+            frame_buffer.append(f"{draw_background_pattern(term_cols)}\n")
 
         sys.stdout.write("\033[H" + "".join(frame_buffer))
         sys.stdout.flush()

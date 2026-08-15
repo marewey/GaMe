@@ -213,17 +213,11 @@ set tptC=0
 set tss=%time%
 :a
 bin\bg.exe Cursor 0
-echo [DEBUG 1] Inside main loop :a, calling :gam.input
 call :gam.input
-echo [DEBUG 2] Returned from :gam.input, calling :gam.usr
 call :gam.usr
-echo [DEBUG 3] Returned from :gam.usr, calling :gam.update_entities
 call :gam.update_entities
-echo [DEBUG 4] Returned from :gam.update_entities, calling :gam.draw
 call :gam.draw
-echo [DEBUG 5] Returned from :gam.draw, calling :gam.action
 call :gam.action
-echo [DEBUG 6] Returned from :gam.action
 goto :a
 :gam.input
 set last_input=%input%
@@ -234,7 +228,6 @@ set input=%errorlevel%
 if "%ingame%"=="1" if not "%speed%"=="0" bin\bg.exe Sleep %speed%
 goto :eof
 :gam.usr
-echo [DEBUG 7] Inside :gam.usr
 ::Move User along the map
 ::Take input and process
 set "x!x!-y!y!="
@@ -272,7 +265,11 @@ set y_view=%y%
 goto :eof
 
 :gam.update_entities
-echo [DEBUG 8] Inside :gam.update_entities
+if not defined bullet_count set "bullet_count=0"
+if not defined ebullet_count set "ebullet_count=0"
+if not defined enemy_count set "enemy_count=0"
+if not defined ymin set "ymin=0"
+if not defined ymax set "ymax=36"
 if "!gmode!"=="1" (
     rem Player bullet firing logic sets fired=1 if player fires.
     if "!fired!"=="1" (
@@ -362,6 +359,7 @@ if "!gmode!"=="1" (
             set "x!ebx!-y!eby!="
             set /a eby=!eby!-2
             set /a limit=!ymin!-5
+            if not defined limit set "limit=-5"
             if !eby! lss !limit! (
                 rem despawn
             ) else (
@@ -427,6 +425,7 @@ if "!gmode!"=="1" (
             )
 
             for /f "tokens=1" %%H in ("%%i") do set "ehit=!enemy_hit[%%H]!"
+            if not defined ymin set "ymin=0"
             if !ey! lss !ymin! (
                 rem despawn
             ) else if "!ehit!"=="1" (
@@ -445,11 +444,21 @@ if "!gmode!"=="1" (
         )
     )
     set "enemy_count=!e_idx!"
+
+    rem Spawn new enemies at bottom of view
+    set /a enemy_spawn_timer=(!enemy_spawn_timer!+1) %% 10
+    if "!enemy_spawn_timer!"=="0" (
+        set /a rand_spawn=!random! %% !xmax! + 1
+        set /a spawn_y=!ymax!-1
+        set /a enemy_count=!enemy_count!+1
+        set "enemy_x[!enemy_count!]=!rand_spawn!"
+        set "enemy_y[!enemy_count!]=!spawn_y!"
+        for /f "tokens=1,2" %%A in ("!rand_spawn! !spawn_y!") do set "x%%A-y%%B=▲"
+    )
 )
 goto :eof
 
 :gam.draw
-echo [DEBUG 9] Inside :gam.draw
 ::Write active part of map to screen from memory
 set /a ywin_tmp=ywin-1
 set /a pad_tmp=pad-2
