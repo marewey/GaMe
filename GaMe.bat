@@ -438,23 +438,7 @@ if "!gmode!"=="1" (
     )
     set "enemy_count=!e_idx!"
 
-    rem Spawn new enemy at the bottom (ymax - 1)
-    set /a enemy_spawn_timer=!enemy_spawn_timer!+1
-    if !enemy_spawn_timer! gtr 10 (
-        set enemy_spawn_timer=0
-        if !enemy_count! lss 3 (
-            set /a rand_spawn=!random! %% !xmax! + 1
-            set /a spawn_y=!ymax!-1
-            for /f "tokens=1,2" %%S in ("!rand_spawn! !spawn_y!") do set "cell=!x%%S-y%%T!"
-            if "!cell!"==" " (
-                set /a enemy_count=!enemy_count!+1
-                set "enemy_x[!enemy_count!]=!rand_spawn!"
-                set "enemy_y[!enemy_count!]=!spawn_y!"
-                set "enemy_hit[!enemy_count!]=0"
-                set "x!rand_spawn!-y!spawn_y!=▲"
-            )
-        )
-    )
+    rem Enemies disabled temporarily
 )
 goto :eof
 
@@ -670,14 +654,14 @@ set "sel_char%sel%=►"
 bin\bg.exe fcprint 1 !tmpside! 7 "      " 9A "                    \n"
 bin\bg.exe fcprint 2 !tmpside! 7 "      " 9A "  Gems" 97 " and " 9F "Meteors  \n"
 bin\bg.exe fcprint 3 !tmpside! 7 "      " 9A "                    \n"
-bin\bg.exe fcprint 5 !tmpside! 7 "       " 8F "!sel_char1! Start GaM       \n"
-bin\bg.exe fcprint 6 !tmpside! 7 "       " 8F "!sel_char2! Mode: !mode_str! \n"
-bin\bg.exe fcprint 7 !tmpside! 7 "       " 8F "!sel_char3! Scores          \n"
-bin\bg.exe fcprint 8 !tmpside! 7 "       " 8F "!sel_char4! Controls        \n"
-bin\bg.exe fcprint 9 !tmpside! 7 "       " 8F "!sel_char5! Goals           \n"
-bin\bg.exe fcprint 10 !tmpside! 7 "       " 8F "!sel_char6! Muted: %mute%      \n"
-bin\bg.exe fcprint 11 !tmpside! 7 "       " 8F "!sel_char7! Difficulty: %difficulty% \n"
-bin\bg.exe fcprint 12 !tmpside! 7 "       " 8F "!sel_char8! Quit            \n"
+bin\bg.exe fcprint 5 !tmpside! 7 "       " 8F "!sel_char1! Start GaM       " 7 " \n"
+bin\bg.exe fcprint 6 !tmpside! 7 "       " 8F "!sel_char2! Mode: !mode_str!    " 7 " \n"
+bin\bg.exe fcprint 7 !tmpside! 7 "       " 8F "!sel_char3! Scores          " 7 " \n"
+bin\bg.exe fcprint 8 !tmpside! 7 "       " 8F "!sel_char4! Controls        " 7 " \n"
+bin\bg.exe fcprint 9 !tmpside! 7 "       " 8F "!sel_char5! Goals           " 7 " \n"
+bin\bg.exe fcprint 10 !tmpside! 7 "       " 8F "!sel_char6! Muted: %mute%        " 7 " \n"
+bin\bg.exe fcprint 11 !tmpside! 7 "       " 8F "!sel_char7! Difficulty: %difficulty%   " 7 " \n"
+bin\bg.exe fcprint 12 !tmpside! 7 "       " 8F "!sel_char8! Quit            " 7 " \n"
 if "%debug%"=="1" bin\bg.exe fcprint %ywin_tmp% 0 7 "%sidel%###############\n" 8 "%xwin%x%ywin%/%xmax%x%ymax%/%pad%(%iseven%)%input%    "
 if not "%connection%"=="1" bin\bg.exe fcprint %ywin_tmp% !tmpside! 4F "Offline" CF " Scores wont post online" 07 \n
 call :gam.input
@@ -776,6 +760,10 @@ pause >nul
 goto :eof
 :gam.load
 ::Add level for each map loaded
+if not defined prb set prb=5
+if not defined heartSeed set heartSeed=101
+if not defined gemSeed set gemSeed=209
+if not defined boomSeed set boomSeed=1
 set /a level=level+1
 set /a level_=level_+1
 if "!level_!"=="10" set /a prb=prb+1&set level_=0

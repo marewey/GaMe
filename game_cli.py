@@ -24,10 +24,6 @@ EMBEDDED_ASSETS = {
 }
 
 
-# Resize terminal window at startup (Windows only)
-if os.name == 'nt':
-    os.system("mode con cols=43 lines=20")
-
 # Enable Windows virtual terminal (ANSI color support), set large font, and maximize window
 if os.name == 'nt':
     kernel32 = ctypes.windll.kernel32
@@ -42,7 +38,7 @@ if os.name == 'nt':
         if hwnd:
             ctypes.windll.user32.ShowWindow(hwnd, 3) # SW_MAXIMIZE
 
-        # Set large console font (Consolas 28pt)
+        # Set large console font (Consolas 36pt)
         class CONSOLE_FONT_INFOEX(ctypes.Structure):
             _fields_ = [
                 ("cbSize", ctypes.c_ulong),
@@ -55,7 +51,7 @@ if os.name == 'nt':
         font_info = CONSOLE_FONT_INFOEX()
         font_info.cbSize = ctypes.sizeof(CONSOLE_FONT_INFOEX)
         font_info.dwFontSize[0] = 0
-        font_info.dwFontSize[1] = 28
+        font_info.dwFontSize[1] = 36
         font_info.FontFamily = 54
         font_info.FontWeight = 700
         font_info.FaceName = "Consolas"
