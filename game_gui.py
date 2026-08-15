@@ -77,55 +77,67 @@ def play_sfx(filename):
 class GameApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Gems and Meteors - Graphical Edition")
-        self.geometry("600x800")
-        self.resizable(False, False)
+        self.title("GaMe - Graphical Edition")
+        try:
+            self.attributes("-fullscreen", True)
+        except Exception:
+            self.state("zoomed")
         self.configure(bg=COLOR_BG)
 
+        # Get actual screen dimensions for full-screen centering
+        self.screen_w = self.winfo_screenwidth()
+        self.screen_h = self.winfo_screenheight()
+
         # Star Background Setup
-        self.stars = [[random.randint(0, 600), random.randint(0, 800), random.uniform(1, 3.5)] for _ in range(80)]
+        self.stars = [[random.randint(0, self.screen_w), random.randint(0, self.screen_h), random.uniform(1, 3.5)] for _ in range(120)]
 
         self.show_main_menu()
 
     def show_main_menu(self):
         self.clear_screen()
 
-        # Canvas for Title and starry background
-        self.canvas = tk.Canvas(self, width=600, height=800, bg=COLOR_BG, highlightthickness=0)
+        self.canvas = tk.Canvas(self, width=self.screen_w, height=self.screen_h, bg=COLOR_BG, highlightthickness=0)
         self.canvas.pack(fill="both", expand=True)
 
         self.draw_stars_on_canvas()
 
-        # Render Title Text
-        self.canvas.create_text(300, 120, text="GEMS AND METEORS", font=("Courier New", 36, "bold"), fill=COLOR_CYAN)
-        self.canvas.create_text(300, 170, text="Graphical Edition (Tkinter)", font=("Courier New", 18), fill=COLOR_WHITE)
+        center_x = self.screen_w // 2
 
-        # Add buttons using Tkinter labels with elegant styles
-        self.create_menu_button("Start Game", 280, self.start_game)
-        self.create_menu_button(f"Game Mode: {'Levels' if gmode == 1 else 'Endless'}", 340, self.toggle_gmode)
-        self.create_menu_button(f"Difficulty: {difficulty}", 400, self.toggle_difficulty)
-        self.create_menu_button(f"Sound: {'Muted' if settings_mute else 'ON'}", 460, self.toggle_sound)
-        self.create_menu_button("Leaderboard", 520, self.show_leaderboard)
-        self.create_menu_button("Controls & Help", 580, self.show_help)
-        self.create_menu_button("Quit Game", 640, self.quit)
+        # Title Banner Block
+        self.canvas.create_rectangle(center_x - 220, 100, center_x + 220, 180, fill="#0A320A", outline=COLOR_GREEN, width=3)
+        self.canvas.create_text(center_x, 140, text="Gems and Meteors", font=("Courier New", 28, "bold"), fill=COLOR_WHITE)
+
+        # Menu Buttons
+        mode_str = "Levels" if gmode == 1 else "Endless"
+        mute_val = 1 if settings_mute else 0
+
+        self.create_menu_button("Start GaM", 240, self.start_game)
+        self.create_menu_button(f"Mode: {mode_str}", 290, self.toggle_gmode)
+        self.create_menu_button("Scores", 340, self.show_leaderboard)
+        self.create_menu_button("Controls", 390, self.show_help)
+        self.create_menu_button("Goals", 440, self.show_goals)
+        self.create_menu_button(f"Muted: {mute_val}", 490, self.toggle_sound)
+        self.create_menu_button(f"Difficulty: {difficulty}", 540, self.toggle_difficulty)
+        self.create_menu_button("Quit", 590, self.quit)
 
         self.menu_running = True
         self.animate_menu()
 
     def create_menu_button(self, text, y, callback):
-        btn = tk.Label(self.canvas, text=text, font=("Courier New", 18, "bold"), fg=COLOR_WHITE, bg=COLOR_BG, cursor="hand2")
-        btn.bind("<Enter>", lambda e: btn.configure(fg=COLOR_GREEN))
-        btn.bind("<Leave>", lambda e: btn.configure(fg=COLOR_WHITE))
+        center_x = self.screen_w // 2
+        btn = tk.Label(self.canvas, text=f" {text:<18}", font=("Courier New", 20, "bold"), fg=COLOR_WHITE, bg="#2D2D2D", width=20, cursor="hand2", anchor="w")
+        btn.bind("<Enter>", lambda e: btn.configure(bg="#444444", fg=COLOR_GREEN))
+        btn.bind("<Leave>", lambda e: btn.configure(bg="#2D2D2D", fg=COLOR_WHITE))
         btn.bind("<Button-1>", lambda e: callback())
-        self.canvas.create_window(300, y, window=btn)
+        self.canvas.create_window(center_x, y, window=btn)
 
     def draw_stars_on_canvas(self):
         self.canvas.delete("star")
         for s in self.stars:
             s[1] += s[2] * 0.5
-            if s[1] > 800:
+            if s[1] > self.screen_h:
                 s[1] = 0
-                s[0] = random.randint(0, 600)
+                s[0] = random.randint(0, self.screen_w)
             col = int(s[2] * 70)
             rgb = f"#{col:02x}{col:02x}{min(255, col+30):02x}"
             sz = int(s[2])
@@ -159,21 +171,50 @@ class GameApp(tk.Tk):
         settings_mute = not settings_mute
         self.show_main_menu()
 
+    def show_goals(self):
+        self.clear_screen()
+        self.canvas = tk.Canvas(self, width=self.screen_w, height=self.screen_h, bg=COLOR_BG, highlightthickness=0)
+        self.canvas.pack(fill="both", expand=True)
+
+        center_x = self.screen_w // 2
+
+        self.canvas.create_text(center_x, 120, text="GOALS", font=("Courier New", 32, "bold"), fill=COLOR_YELLOW)
+
+        goals_lines = [
+            "Avoid all Meteors",
+            "Collect Items:",
+            "- Gems ♦      : +10 points",
+            "- Health ♥    : +1 life",
+            "- Shields ☼   : +1 SHIELD",
+            "",
+            "Holding ☼ will lower damage",
+            "Firing will use 1 ☼ to destroy meteors ahead"
+        ]
+
+        for i, line in enumerate(goals_lines):
+            self.canvas.create_text(center_x, 220 + i * 38, text=line, font=("Courier New", 18, "bold"), fill=COLOR_WHITE)
+
+        self.create_menu_button("Return to Menu", 650, self.show_main_menu)
+        self.menu_running = True
+        self.animate_menu()
+
     def show_leaderboard(self):
         load_scores()
         self.clear_screen()
 
-        self.canvas = tk.Canvas(self, width=600, height=800, bg=COLOR_BG, highlightthickness=0)
+        self.canvas = tk.Canvas(self, width=self.screen_w, height=self.screen_h, bg=COLOR_BG, highlightthickness=0)
         self.canvas.pack(fill="both", expand=True)
 
-        self.canvas.create_text(300, 100, text="LOCAL LEADERBOARD", font=("Courier New", 28, "bold"), fill=COLOR_YELLOW)
+        center_x = self.screen_w // 2
 
-        headers = f"{'Rank':<6}{'Name':<10}{'Score':<12}{'Level':<8}{'Diff':<8}"
-        self.canvas.create_text(300, 180, text=headers, font=("Courier New", 16, "bold"), fill=COLOR_CYAN)
+        self.canvas.create_text(center_x, 100, text="HIGH SCORES", font=("Courier New", 32, "bold"), fill=COLOR_YELLOW)
+
+        headers = f"#. Name: SCORE [DIFF:LVL]"
+        self.canvas.create_text(center_x, 170, text=headers, font=("Courier New", 20, "bold"), fill=COLOR_CYAN)
 
         for idx, s in enumerate(local_scores[:10]):
-            line = f"#{idx+1:<5}{s['name']:<10}{s['fs']:<12}{s['level']:<8}{s['difficulty']:<8}"
-            self.canvas.create_text(300, 220 + idx * 35, text=line, font=("Courier New", 14), fill=COLOR_WHITE)
+            line = f"{idx+1}. {s['name']}: {s['fs']} [{s['difficulty']}:{s['level']}]"
+            self.canvas.create_text(center_x, 220 + idx * 36, text=line, font=("Courier New", 18, "bold"), fill=COLOR_WHITE)
 
         self.create_menu_button("Return to Menu", 680, self.show_main_menu)
         self.menu_running = True
@@ -181,29 +222,25 @@ class GameApp(tk.Tk):
 
     def show_help(self):
         self.clear_screen()
-        self.canvas = tk.Canvas(self, width=600, height=800, bg=COLOR_BG, highlightthickness=0)
+        self.canvas = tk.Canvas(self, width=self.screen_w, height=self.screen_h, bg=COLOR_BG, highlightthickness=0)
         self.canvas.pack(fill="both", expand=True)
 
-        self.canvas.create_text(300, 100, text="CONTROLS & HELP", font=("Courier New", 28, "bold"), fill=COLOR_YELLOW)
+        center_x = self.screen_w // 2
+
+        self.canvas.create_text(center_x, 120, text="CONTROLS", font=("Courier New", 32, "bold"), fill=COLOR_YELLOW)
 
         help_lines = [
-            "A / LEFT Arrow    : Move Left",
-            "D / RIGHT Arrow   : Move Right",
-            "SPACE / ENTER     : Fire Laser (Downwards)",
-            "ESC               : Pause Settings",
-            "",
-            "Objective:",
-            "- Shoot/dodge enemies coming from the bottom",
-            "- Collect Gems, Hearts, and gun Shields",
-            "- Avoid meteor clusters and projectile bullets",
-            "- Land in the middle column on the yellow Landing",
-            "  Strip at the bottom to save your progress!"
+            "LEFT  -- Go Left",
+            "RIGHT - Go Right",
+            "SPACE - Use SHIELD",
+            "ESC   --- Pause",
+            "Q/^C  -- Quit/Die"
         ]
 
         for i, line in enumerate(help_lines):
-            self.canvas.create_text(100, 180 + i * 35, text=line, font=("Courier New", 14), fill=COLOR_WHITE, anchor="w")
+            self.canvas.create_text(center_x, 220 + i * 45, text=line, font=("Courier New", 20, "bold"), fill=COLOR_WHITE)
 
-        self.create_menu_button("Return to Menu", 680, self.show_main_menu)
+        self.create_menu_button("Return to Menu", 600, self.show_main_menu)
         self.menu_running = True
         self.animate_menu()
 
@@ -464,24 +501,27 @@ class GameApp(tk.Tk):
             acc_thresholds = {1: 30, 2: 50, 3: 70, 4: 90}
             thresh = acc_thresholds[difficulty]
 
-            for r in range(len(self.map_rows) - 1, -1, -1):
+            enemies = []
+            for r in range(len(self.map_rows)):
                 for c in range(self.cols):
                     if self.map_rows[r][c] == "▲":
                         self.map_rows[r][c] = " "
-                        new_c = c
-                        if self.tick_count % 2 == 0:
-                            if random.randint(0, 99) < thresh:
-                                if c < self.player_col:
-                                    new_c = min(self.cols - 1, c + 1)
-                                elif c > self.player_col:
-                                    new_c = max(0, c - 1)
-                            else:
-                                move = random.choice([-1, 0, 1])
-                                new_c = max(0, min(self.cols - 1, c + move))
-                        if random.randint(0, 5) == 0:
-                            self.enemy_bullets.append([new_c, r - 1])
-                        if r < len(self.map_rows):
-                            self.map_rows[r][new_c] = "▲"
+                        enemies.append((c, r))
+
+            for c, r in enemies:
+                new_c = c
+                if self.tick_count % 2 == 0:
+                    if random.randint(0, 99) < thresh:
+                        if c < self.player_col:
+                            new_c = min(self.cols - 1, c + 1)
+                        elif c > self.player_col:
+                            new_c = max(0, c - 1)
+                    else:
+                        move = random.choice([-1, 0, 1])
+                        new_c = max(0, min(self.cols - 1, c + move))
+                if random.randint(0, 5) == 0:
+                    self.enemy_bullets.append([new_c, r - 1])
+                self.map_rows[r][new_c] = "▲"
 
             if self.level_scroll_count % 15 == 0 and self.level_scroll_count < self.level_goal_row - 10:
                 spawn_c = random.randint(0, self.cols - 1)
@@ -596,21 +636,12 @@ class GameApp(tk.Tk):
                     # Enemy bullet fires up screen (Red laser beam)
                     self.game_canvas.create_line(rx + self.cell_w//2, ry, rx + self.cell_w//2, ry + self.cell_h, fill=COLOR_RED, width=4)
                 elif cell == "▲":
-                    # Pointy alien space-shippy enemy pointing UPWARDS
+                    # Orange Triangle Enemy pointing UPWARDS
                     self.game_canvas.create_polygon(
-                        rx + self.cell_w//2, ry + 2,                  # Pointy nose tip pointing UP
-                        rx + 2, ry + self.cell_h - 6,                 # Left wing tip
-                        rx + self.cell_w//2 - 4, ry + self.cell_h - 10,# Left inner indent
-                        rx + self.cell_w//2, ry + self.cell_h - 4,    # Rear notch
-                        rx + self.cell_w//2 + 4, ry + self.cell_h - 10,# Right inner indent
-                        rx + self.cell_w - 2, ry + self.cell_h - 6,   # Right wing tip
-                        fill=COLOR_RED, outline=COLOR_YELLOW
-                    )
-                    # Central power core cockpit
-                    self.game_canvas.create_oval(
-                        rx + self.cell_w//2 - 4, ry + self.cell_h//2 - 4,
-                        rx + self.cell_w//2 + 4, ry + self.cell_h//2 + 4,
-                        fill=COLOR_YELLOW, outline=""
+                        rx + self.cell_w//2, ry + 3,                 # Top point
+                        rx + 3, ry + self.cell_h - 3,                # Bottom-left point
+                        rx + self.cell_w - 3, ry + self.cell_h - 3,  # Bottom-right point
+                        fill="#FF6600", outline=COLOR_YELLOW, width=2
                     )
                 elif cell == "G":
                     # Gem diamond
@@ -622,17 +653,15 @@ class GameApp(tk.Tk):
                         fill=COLOR_GREEN, outline=""
                     )
                 elif cell == "H":
-                    # Beautiful custom polygon Heart shape
+                    # Distinct Heart polygon shape (not a circle)
                     self.game_canvas.create_polygon(
-                        rx + self.cell_w//2, ry + self.cell_h - 4,    # Bottom tip
+                        rx + self.cell_w//2, ry + self.cell_h - 2,    # Bottom point
                         rx + 2, ry + self.cell_h//2 - 2,              # Left waist
-                        rx + 4, ry + 4,                               # Top left outer hump
-                        rx + self.cell_w//2 - 1, ry + 6,              # Top center cleavage left
-                        rx + self.cell_w//2, ry + 10,                 # Top center plunge
-                        rx + self.cell_w//2 + 1, ry + 6,              # Top center cleavage right
-                        rx + self.cell_w - 4, ry + 4,                 # Top right outer hump
+                        rx + 4, ry + 2,                               # Top-left lobe
+                        rx + self.cell_w//2, ry + 8,                  # Middle dip
+                        rx + self.cell_w - 4, ry + 2,                 # Top-right lobe
                         rx + self.cell_w - 2, ry + self.cell_h//2 - 2,# Right waist
-                        fill=COLOR_RED, outline=""
+                        fill=COLOR_RED, outline=COLOR_WHITE, width=1
                     )
                 elif cell == "S":
                     # Shield circle
@@ -660,8 +689,21 @@ class GameApp(tk.Tk):
         # Draw HUD interface at top
         self.game_canvas.create_rectangle(0, 0, 600, 80, fill="#0F0F1E", outline=COLOR_CYAN, width=2)
 
-        # Lives text
-        self.game_canvas.create_text(80, 25, text=f"Lives: {self.lives}/10", font=("Courier New", 14, "bold"), fill=COLOR_RED, anchor="w")
+        # Render Heart icons for lives in top HUD
+        for i in range(min(10, self.lives)):
+            hx = 140 + i * 22
+            hy = 20
+            self.game_canvas.create_polygon(
+                hx, hy + 12,
+                hx - 8, hy + 2,
+                hx - 4, hy - 6,
+                hx, hy - 2,
+                hx + 4, hy - 6,
+                hx + 8, hy + 2,
+                fill=COLOR_RED, outline=COLOR_WHITE
+            )
+
+        self.game_canvas.create_text(50, 25, text="Lives:", font=("Courier New", 14, "bold"), fill=COLOR_RED, anchor="w")
         # Shields text
         self.game_canvas.create_text(80, 55, text=f"Shields: {self.special_shields}/5", font=("Courier New", 14, "bold"), fill=COLOR_CYAN, anchor="w")
 

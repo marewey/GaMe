@@ -28,13 +28,40 @@ EMBEDDED_ASSETS = {
 if os.name == 'nt':
     os.system("mode con cols=43 lines=20")
 
-# Enable Windows virtual terminal (ANSI color support)
+# Enable Windows virtual terminal (ANSI color support), set large font, and maximize window
 if os.name == 'nt':
     kernel32 = ctypes.windll.kernel32
     hStdOut = kernel32.GetStdHandle(-11)
     mode = ctypes.c_ulong()
     kernel32.GetConsoleMode(hStdOut, ctypes.byref(mode))
     kernel32.SetConsoleMode(hStdOut, mode.value | 0x0004)
+
+    try:
+        # Maximize console window for fullscreen feel
+        hwnd = kernel32.GetConsoleWindow()
+        if hwnd:
+            ctypes.windll.user32.ShowWindow(hwnd, 3) # SW_MAXIMIZE
+
+        # Set large console font (Consolas 28pt)
+        class CONSOLE_FONT_INFOEX(ctypes.Structure):
+            _fields_ = [
+                ("cbSize", ctypes.c_ulong),
+                ("nFont", ctypes.c_ulong),
+                ("dwFontSize", ctypes.c_short * 2),
+                ("FontFamily", ctypes.c_uint),
+                ("FontWeight", ctypes.c_uint),
+                ("FaceName", ctypes.c_wchar * 32)
+            ]
+        font_info = CONSOLE_FONT_INFOEX()
+        font_info.cbSize = ctypes.sizeof(CONSOLE_FONT_INFOEX)
+        font_info.dwFontSize[0] = 0
+        font_info.dwFontSize[1] = 28
+        font_info.FontFamily = 54
+        font_info.FontWeight = 700
+        font_info.FaceName = "Consolas"
+        kernel32.SetCurrentConsoleFontEx(hStdOut, False, ctypes.byref(font_info))
+    except Exception:
+        pass
 
 # Keyboard input for Windows / POSIX supporting arrow keys and WASD
 try:
@@ -178,12 +205,16 @@ def save_local_score(name, fs, score_val, bonus, lvl, diff, gms, dmg):
     except Exception:
         pass
 
+def draw_background_pattern():
+    # Green background texture exactly matching Batch's %test%
+    return f"{C_GREEN}{'░' * 43}{C_RESET}"
+
 def draw_header_title():
     # Exact replica of Batch version's top banner
     print(f"{C_GREEN}░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░{C_RESET}")
-    print(f"{C_GREEN}░░░░░░{C_RESET} {C_BG_BLUE}{C_BOLD}{C_GREEN}                    {C_RESET} {C_GREEN}░░░░░░{C_RESET}")
-    print(f"{C_GREEN}░░░░░░{C_RESET} {C_BG_BLUE}{C_BOLD}{C_GREEN}  Gems{C_RESET} {C_BG_BLUE}{C_WHITE}and{C_RESET} {C_BG_BLUE}{C_BOLD}{C_WHITE}Meteors  {C_RESET} {C_GREEN}░░░░░░{C_RESET}")
-    print(f"{C_GREEN}░░░░░░{C_RESET} {C_BG_BLUE}{C_BOLD}{C_GREEN}                    {C_RESET} {C_GREEN}░░░░░░{C_RESET}")
+    print(f"{C_GREEN}░░░░░░{C_RESET}\033[48;5;28m\033[38;5;10m{C_BOLD}                    {C_RESET}{C_GREEN}░░░░░░{C_RESET}")
+    print(f"{C_GREEN}░░░░░░{C_RESET}\033[48;5;28m\033[38;5;10m{C_BOLD}  Gems\033[38;5;7m and \033[38;5;15mMeteors  {C_RESET}{C_GREEN}░░░░░░{C_RESET}")
+    print(f"{C_GREEN}░░░░░░{C_RESET}\033[48;5;28m\033[38;5;10m{C_BOLD}                    {C_RESET}{C_GREEN}░░░░░░{C_RESET}")
 
 def main_menu():
     global gmode, char_down, difficulty, MUTE
@@ -193,6 +224,7 @@ def main_menu():
     while True:
         os.system('cls' if os.name == 'nt' else 'clear')
         draw_header_title()
+        print(f"{C_GREEN}░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░{C_RESET}")
 
         mode_str = "Levels" if gmode == 1 else "Endless"
         mute_val = 1 if MUTE else 0
@@ -208,12 +240,16 @@ def main_menu():
             "Quit"
         ]
 
-        print()
         for i, opt in enumerate(options, 1):
             cursor = "►" if i == sel else " "
-            # Batch menu option styling with dark grey background block
-            text = f"{cursor} {opt:<19}"
-            print(f"{C_GREEN}░░░░░░░{C_RESET} \033[48;5;238m\033[38;5;15m{C_BOLD}{text}{C_RESET}")
+            # Exactly 20 chars inside dark grey block to form clean rectangle
+            text = f"{cursor} {opt}"
+            padded_text = f"{text:<20}"
+            print(f"{C_GREEN}░░░░░░░{C_RESET}\033[48;5;238m\033[38;5;15m{C_BOLD}{padded_text}{C_RESET}{C_GREEN}░░░░░░░░░░░░░░░░{C_RESET}")
+
+        # Fill remaining lines to match Batch menu height
+        print(f"{C_GREEN}░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░{C_RESET}")
+        print(f"{C_GREEN}░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░{C_RESET}")
 
         # Input loop
         while True:
@@ -222,11 +258,17 @@ def main_menu():
                 break
             time.sleep(0.05)
 
-        # Map WASD / Arrow keys correctly
         if key in ("arrow_H", "w", "arrow_up", "arrow_A", "a_up"):
             sel = sel - 1 if sel > 1 else total_options
         elif key in ("arrow_P", "s", "arrow_down", "arrow_B", "a_down"):
             sel = sel + 1 if sel < total_options else 1
+        elif key in ("m", "109"):
+            MUTE = not MUTE
+            if MUTE: stop_bg_music()
+            else: start_bg_music()
+        elif key in ("q", "113"):
+            stop_bg_music()
+            sys.exit(0)
         elif key in ("\r", " ", "\n"):
             if sel == 1:
                 run_game()
@@ -240,10 +282,8 @@ def main_menu():
                 show_goals()
             elif sel == 6:
                 MUTE = not MUTE
-                if MUTE:
-                    stop_bg_music()
-                else:
-                    start_bg_music()
+                if MUTE: stop_bg_music()
+                else: start_bg_music()
             elif sel == 7:
                 difficulty = difficulty + 1 if difficulty < 4 else 1
             elif sel == 8:
@@ -251,39 +291,51 @@ def main_menu():
                 sys.exit(0)
 
 def show_goals():
+    # Matching Batch goals screen exactly
     os.system('cls' if os.name == 'nt' else 'clear')
-    print(f"\n{C_BOLD}{C_WHITE}             GOALS             {C_RESET}")
-    print(f"  Avoid all Meteors")
-    print(f"  Collect Items:")
-    print(f"  - {C_GREEN}Gems {char_gem}{C_RESET}     : +10 points")
-    print(f"  - {C_RED}Health {char_heart}{C_RESET}   : +1 life")
-    print(f"  - {C_MAGENTA}Shields {char_sun}{C_RESET}  : +1 SHIELD")
-    print(f"\n  Holding {C_MAGENTA}{char_sun}{C_RESET} will lower damage")
-    print(f"  Firing will use 1 {C_MAGENTA}{char_sun}{C_RESET} to")
-    print(f"  destroy meteors ahead")
+    pad = "░░░░░░░░░░░░░"
+    print(f"\n{pad}\033[47m\033[30m{C_BOLD}             GOALS             {C_RESET}")
+    print(f"{pad}  Avoid all Meteors")
+    print(f"{pad}  Collect Items:")
+    print(f"{pad}  - {C_GREEN}Gems {char_gem}{C_RESET}     : +10 points ")
+    print(f"{pad}  - {C_RED}Health {char_heart}{C_RESET}   : +1 life ")
+    print(f"{pad}  - {C_MAGENTA}Shields {char_sun}{C_RESET}  : +1 SHIELD ")
+    print(f"{pad}  Holding {C_MAGENTA}{char_sun}{C_RESET} will lower damage ")
+    print(f"{pad}  Firing will use 1 {C_MAGENTA}{char_sun}{C_RESET} to")
+    print(f"{pad}  destroy meteors ahead")
     print("\n  Press any key to continue...")
     while True:
         if get_key_pressed() is not None:
             break
         time.sleep(0.05)
 
-def show_controls():
     os.system('cls' if os.name == 'nt' else 'clear')
-    print(f"\n{C_BOLD}{C_YELLOW}  ===== CONTROLS & HELP ====={C_RESET}\n")
-    print(f"  {C_BOLD}Movement:{C_RESET}")
-    print(f"    ◄ Left Arrow / A  : Move Left")
-    print(f"    ► Right Arrow / D : Move Right")
-    print(f"    ESC               : Pause settings")
-    print()
-    print(f"  {C_BOLD}Combat (Levels Mode Only):{C_RESET}")
-    print(f"    Space / Enter     : Fire weapon downwards!")
-    print(f"    Consumes {C_CYAN}1 Shield ({char_sun}){C_RESET} per 10 shots.")
-    print()
-    print(f"  {C_BOLD}Objectives:{C_RESET}")
-    print(f"    - Gems ({C_GREEN}{char_gem}{C_RESET})      : +Points")
-    print(f"    - Hearts ({C_RED}{char_heart}{C_RESET})  : +1 Life")
-    print(f"    - Shields ({C_CYAN}{char_sun}{C_RESET}) : Gun Ammo / protection")
-    print(f"    - Land on the Landing Strip at bottom!")
+    print(f"\n{pad}\033[47m\033[30m{C_BOLD}             GOALS             {C_RESET}")
+    print(f"{pad}       Score Calculation")
+    print(f"{pad}   SCORE")
+    print(f"{pad}   TIME")
+    print(f"{pad}   BONUS [{{LVL*2}}*{{DIFF*2}}]")
+    print(f"{pad} + BONUS [{{DMG*2}}*{{DIFF*2}}]")
+    print(f"{pad}   ________________________")
+    print(f"{pad}   TOTAL")
+    print("\n  Press any key to return...")
+    while True:
+        if get_key_pressed() is not None:
+            break
+        time.sleep(0.05)
+
+def show_controls():
+    # Matching Batch controls screen exactly
+    os.system('cls' if os.name == 'nt' else 'clear')
+    pad = "░░░░░░░░░░░░░"
+    print(f"\n{pad}\033[47m\033[30m{C_BOLD}            CONTROLS           {C_RESET}")
+    print(f"{pad}_______________________________")
+    print(f"{pad}    LEFT -- Go Left")
+    print(f"{pad}    RIGHT - Go Right")
+    print(f"{pad}    SPACE - Use SHIELD")
+    print(f"{pad}    ESC --- Pause")
+    print(f"{pad}    Q/^C -- Quit/Die")
+    print(f"{pad}_______________________________")
     print("\n  Press any key to return...")
     while True:
         if get_key_pressed() is not None:
@@ -293,11 +345,13 @@ def show_controls():
 def show_high_scores():
     load_scores()
     os.system('cls' if os.name == 'nt' else 'clear')
-    print(f"\n{C_BOLD}{C_YELLOW}  ===== LEADERBOARD ====={C_RESET}\n")
-    print(f"  {C_BOLD}{'Name':<6}{'Score':<10}{'Lvl':<5}{'Diff':<5}{'Gems':<5}{C_RESET}")
-    print("  " + "-" * 32)
-    for idx, s in enumerate(local_scores[:8], 1):
-        print(f"  #{idx} {s['name']:<4} {s['fs']:<8} L{s['level']:<4} D{s['difficulty']:<4}")
+    pad = "░░░░░░░░░░░░░"
+    print(f"\n{pad}\033[47m\033[30m{C_BOLD}           HIGH SCORES         {C_RESET}")
+    print(f"{pad}#. Name: SCORE [DIFF:LVL]")
+    print(f"{pad}_______________________________")
+    for idx, s in enumerate(local_scores[:10], 1):
+        line = f"{idx}. {s['name']}: {s['fs']} [{s['difficulty']}:{s['level']}]"
+        print(f"{pad}{line}")
     print("\n  Press any key to return...")
     while True:
         if get_key_pressed() is not None:
@@ -312,20 +366,21 @@ def pause_menu():
 
     while True:
         os.system('cls' if os.name == 'nt' else 'clear')
-        print(f"\n{C_BOLD}{C_RED}  ===== GAME PAUSED ====={C_RESET}\n")
-
-        mute_str = "Muted" if MUTE else "Sound ON"
+        pad = "░░░░░░░░░░░░░"
+        print(f"\n{pad}\033[48;5;238m\033[38;5;15m{C_BOLD}       GAME PAUSED         {C_RESET}")
+        print(f"{pad}___________________________")
 
         options = [
-            "Resume Game",
-            f"Toggle Sound: {mute_str}",
-            "Quit to Main Menu"
+            "[ESC] Resume",
+            f"[M]   Toggle Mute: {1 if MUTE else 0}",
+            "[Q]   Quit Game"
         ]
 
         for i, opt in enumerate(options, 1):
-            cursor = f"{C_GREEN} ► {C_RESET}" if i == sel else "   "
             text_color = C_BOLD + C_WHITE if i == sel else C_WHITE
-            print(f"  {cursor}{text_color}{opt:<28}{C_RESET}")
+            print(f"{pad} {text_color}{opt}{C_RESET}")
+
+        print(f"{pad}___________________________")
 
         while True:
             key = get_key_pressed()
@@ -337,6 +392,10 @@ def pause_menu():
             sel = sel - 1 if sel > 1 else total_opts
         elif key in ("arrow_P", "s", "arrow_down", "arrow_B", "a_down"):
             sel = sel + 1 if sel < total_opts else 1
+        elif key in ("m", "109"):
+            MUTE = not MUTE
+        elif key in ("q", "113"):
+            return "quit"
         elif key in ("\r", " ", "\n"):
             if sel == 1:
                 start_bg_music()
@@ -571,24 +630,27 @@ def run_game():
             acc_thresholds = {1: 30, 2: 50, 3: 70, 4: 90}
             thresh = acc_thresholds[difficulty]
 
-            for r in range(view_height - 1, -1, -1):
+            enemies = []
+            for r in range(view_height):
                 for c in range(cols):
                     if map_rows[r][c] == "▲":
                         map_rows[r][c] = " "
-                        new_c = c
-                        if tick_count % 2 == 0:
-                            if random.randint(0, 99) < thresh:
-                                if c < player_col:
-                                    new_c = min(cols - 1, c + 1)
-                                elif c > player_col:
-                                    new_c = max(0, c - 1)
-                            else:
-                                move = random.choice([-1, 0, 1])
-                                new_c = max(0, min(cols - 1, c + move))
-                        if random.randint(0, 5) == 0:
-                            enemy_bullets.append([new_c, r - 1])
-                        if r < view_height:
-                            map_rows[r][new_c] = "▲"
+                        enemies.append((c, r))
+
+            for c, r in enemies:
+                new_c = c
+                if tick_count % 2 == 0:
+                    if random.randint(0, 99) < thresh:
+                        if c < player_col:
+                            new_c = min(cols - 1, c + 1)
+                        elif c > player_col:
+                            new_c = max(0, c - 1)
+                    else:
+                        move = random.choice([-1, 0, 1])
+                        new_c = max(0, min(cols - 1, c + move))
+                if random.randint(0, 5) == 0:
+                    enemy_bullets.append([new_c, r - 1])
+                map_rows[r][new_c] = "▲"
 
             if tick_count % 15 == 0:
                 spawn_c = random.randint(0, cols - 1)
